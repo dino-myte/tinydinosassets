@@ -1,4 +1,5 @@
 out/
 cache/
-lib/
 broadcast/
+# only the forge-std install dir at the project root — NOT src/lib/
+/lib/

@@ -21,3 +21,24 @@ fs_permissions = [
 
 [fmt]
 line_length = 100
+
+# RPC endpoints per chain (set the *_RPC_URL env vars before deploying).
+# Use with:  forge script script/Deploy.s.sol --rpc-url <chain> ...
+[rpc_endpoints]
+eth = "${ETH_RPC_URL}"
+avax = "${AVAX_RPC_URL}"
+bnb = "${BNB_RPC_URL}"
+poly = "${POLY_RPC_URL}"
+arb = "${ARB_RPC_URL}"
+ftm = "${FTM_RPC_URL}"
+opt = "${OPT_RPC_URL}"
+
+# Etherscan v2 is multichain: one ETHERSCAN_API_KEY works across chains.
+[etherscan]
+eth = { key = "${ETHERSCAN_API_KEY}", chain = 1 }
+avax = { key = "${ETHERSCAN_API_KEY}", chain = 43114 }
+bnb = { key = "${ETHERSCAN_API_KEY}", chain = 56 }
+poly = { key = "${ETHERSCAN_API_KEY}", chain = 137 }
+arb = { key = "${ETHERSCAN_API_KEY}", chain = 42161 }
+ftm = { key = "${ETHERSCAN_API_KEY}", chain = 250 }
+opt = { key = "${ETHERSCAN_API_KEY}", chain = 10 }
