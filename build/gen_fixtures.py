@@ -17,7 +17,7 @@ import os
 from Crypto.Hash import keccak
 
 import reference_render as R
-from common import CHAINS, DESCRIPTION, ROOT
+from common import CHAINS, DESCRIPTION, ROOT, SUPPLY
 from encoding import ATTR_ORDER
 
 OUT = os.path.join(ROOT, "contracts", "test", "fixtures")
@@ -68,7 +68,7 @@ def main():
     _assert_no_escape(DESCRIPTION)
 
     ids, svgH, jsonH, uriH = [], [], [], []
-    for tok in range(1, 10001):
+    for tok in range(1, SUPPLY + 1):
         svg = R.build_svg(R.composite_grid(tok))
         j = metadata_json(tok, "eth")
         u = "data:application/json;base64," + base64.b64encode(j.encode()).decode()
@@ -92,9 +92,9 @@ def main():
         key = tuple(o)
         by_order.setdefault(key, tok)  # first token per order
     sample_ids = sorted(set(
-        [1, 2, 10000]
+        [1, 2, 10000, SUPPLY]
         + list(by_order.values())                       # one per render order
-        + R.M["unique_tokens"]                           # all 15 uniques
+        + R.M["unique_tokens"]                           # all uniques (incl. #10001)
         + [11, 101, 299, 311]                            # alpha (day-landscape) tokens
     ))
     # flat parallel arrays so Foundry's vm.parseJson*Array can read them directly

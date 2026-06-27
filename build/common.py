@@ -20,7 +20,8 @@ CAT_INDEX = {c: i for i, c in enumerate(VIS)}
 CHAINS = ["eth", "avax", "bnb", "poly", "arb", "ftm", "opt"]
 
 DESCRIPTION = "one of 10k cc0 tiny dinos minted out across 7 different chains"
-SUPPLY = 10000
+# 1..10000 plus the bonus 1/1 "bug" (#10001) that was minted on top of the 10k.
+SUPPLY = 10001
 
 # Canonical source = the 1600x1600 PNGs. These are pixel-identical to the minted
 # IPFS images and are blocky (every 100x100 cell is one solid color), so they are

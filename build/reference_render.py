@@ -19,7 +19,7 @@ import os
 import re
 import sys
 
-from common import (CHAINS, DESCRIPTION, ROOT, VIS, blend, load_meta,
+from common import (CHAINS, DESCRIPTION, ROOT, SUPPLY, VIS, blend, load_meta,
                     load_original, px_list)
 from encoding import ATTR_ORDER, OUT_DIR, WIDTHS, decode_sprite
 
@@ -155,7 +155,7 @@ def main():
     load_blobs()
     px_fail = svg_fail = 0
     fails = []
-    for tok in range(1, 10001):
+    for tok in range(1, SUPPLY + 1):
         grid = composite_grid(tok)
         orig = px_list(load_original(tok))
         if grid != orig:
@@ -167,7 +167,7 @@ def main():
         if tok % 2000 == 0:
             print(f"  ...rendered {tok}", flush=True)
 
-    print(f"\nPIXEL/SVG verification: {10000 - px_fail - svg_fail}/10000 exact")
+    print(f"\nPIXEL/SVG verification: {SUPPLY - px_fail - svg_fail}/{SUPPLY} exact")
     print(f"  composite mismatches: {px_fail}   svg-raster mismatches: {svg_fail}")
     if fails:
         print("  first failures:", fails[:20])
@@ -176,7 +176,7 @@ def main():
     meta_fail = 0
     meta_examples = []
     for chain in CHAINS:
-        for tok in range(1, 10001):
+        for tok in range(1, SUPPLY + 1):
             got = build_metadata(tok, chain)
             src, _attrs = load_meta(tok, chain)
             ok = (
@@ -190,9 +190,9 @@ def main():
                 meta_fail += 1
                 if len(meta_examples) < 10:
                     meta_examples.append((chain, tok))
-        print(f"  metadata chain {chain}: checked 10000")
+        print(f"  metadata chain {chain}: checked {SUPPLY}")
 
-    total = 7 * 10000
+    total = len(CHAINS) * SUPPLY
     print(f"\nMETADATA verification: {total - meta_fail}/{total} exact "
           f"(name/description/tokenId/attributes/current-chain)")
     if meta_examples:

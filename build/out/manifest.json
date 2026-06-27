@@ -1,8 +1,8 @@
 {
-  "supply": 10000,
+  "supply": 10001,
   "n_composite_sprites": 105,
-  "n_unique_sprites": 15,
-  "n_sprites": 120,
+  "n_unique_sprites": 16,
+  "n_sprites": 121,
   "cat_order": [
     "background",
     "body",
@@ -185,6 +185,7 @@
     "arb",
     "avax",
     "bsc",
+    "bug",
     "cryptoad",
     "eth",
     "friendly dino",
@@ -213,7 +214,8 @@
     7710,
     8012,
     8911,
-    9845
+    9845,
+    10001
   ],
   "orders": [
     [
@@ -273,10 +275,10 @@
     ]
   ],
   "token_record_bytes": 5,
-  "sprites_bytes": 7548,
+  "sprites_bytes": 7643,
   "sizes": {
-    "sprites.bin": 7548,
-    "spriteOffsets.bin": 484,
-    "tokens.bin": 50000
+    "sprites.bin": 7643,
+    "spriteOffsets.bin": 488,
+    "tokens.bin": 50005
   }
 }
