@@ -68,6 +68,24 @@ contract DinoRenderer {
         );
     }
 
+    /// @notice Raw 16x16 RGBA pixels (1024 bytes, row-major) of a single stored
+    /// sprite. globalSpriteId in [0, N_COMPOSITE) are trait sprites (category
+    /// order from DinoData.catBase); [N_COMPOSITE, N_COMPOSITE+N_UNIQUE) are the
+    /// unique images. Lets traits be verified directly against the source PNGs.
+    function traitRGBA(uint256 globalSpriteId) external view returns (bytes memory out) {
+        bytes memory sprites = store.sprites();
+        bytes memory offs = store.offsets();
+        uint32[256] memory px = _sprite(sprites, _spriteOffset(offs, globalSpriteId));
+        out = new bytes(1024);
+        for (uint256 i = 0; i < 256; i++) {
+            uint32 c = px[i];
+            out[i * 4] = bytes1(uint8(c >> 24));
+            out[i * 4 + 1] = bytes1(uint8(c >> 16));
+            out[i * 4 + 2] = bytes1(uint8(c >> 8));
+            out[i * 4 + 3] = bytes1(uint8(c));
+        }
+    }
+
     function imageSVG(uint256 tokenId) public view returns (string memory) {
         uint32[256] memory grid = _composite(tokenId);
         bytes memory buf = new bytes(24000);

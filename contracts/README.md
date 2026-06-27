@@ -25,9 +25,14 @@ forge test --match-test test_AllTokens -vv  # full 10,000 tokens via keccak hash
 ```
 
 The differential test (`test/DinoRenderer.t.sol`) deploys `DinoStorage` +
-`DinoRenderer`, loads the real blobs, and asserts `imageSVG` / `metadataJSON` /
-`tokenURI` equal the Python-generated fixtures (proven exact vs the original
-collection).
+`DinoRenderer`, loads the real blobs, and asserts the renderer output equals the
+Python-generated fixtures (proven exact vs the original collection):
+
+- `test_Sample` — full-string `imageSVG` / `metadataJSON` / `tokenURI` for a
+  representative subset (all 5 orders, 15 uniques, alpha tokens)
+- `test_Traits` — every stored sprite (`traitRGBA`) vs the source trait PNGs
+- `test_PerChain` — `current-chain` across all 7 chains
+- `test_AllTokens` — all 10,000 tokens via keccak hashes (heavy)
 
 ## Layout
 

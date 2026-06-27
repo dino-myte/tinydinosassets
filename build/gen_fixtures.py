@@ -114,6 +114,32 @@ def main():
             "chains": c_chains, "chainJson": c_json,
         }, f, indent=2)
 
+    # ---- trait fixtures: keccak of each sprite's 1024-byte RGBA (matches traitRGBA) ----
+    from common import VIS, load_original, load_sprite, px_list
+    M = R.M
+    cat_base, values = M["cat_base"], M["values"]
+
+    def rgba_bytes(pixels):
+        b = bytearray()
+        for (r, g, b_, a) in pixels:
+            b += bytes((r, g, b_, a))
+        return bytes(b)
+
+    t_gids, t_hash, t_name = [], [], []
+    for cat in VIS:
+        for vid, val in enumerate(values[cat]):
+            t_gids.append(cat_base[cat] + vid)
+            t_hash.append("0x" + keccak.new(digest_bits=256)
+                          .update(rgba_bytes(px_list(load_sprite(cat, val)))).hexdigest())
+            t_name.append(f"{cat}/{val}")
+    for uidx, utok in enumerate(M["unique_tokens"]):
+        t_gids.append(M["n_composite_sprites"] + uidx)
+        t_hash.append("0x" + keccak.new(digest_bits=256)
+                      .update(rgba_bytes(px_list(load_original(utok)))).hexdigest())
+        t_name.append(f"unique/{utok}")
+    with open(os.path.join(OUT, "traits.json"), "w") as f:
+        json.dump({"gids": t_gids, "rgbaHash": t_hash, "names": t_name}, f)
+
     print(f"wrote {OUT}/hashes_eth.json (10000 tokens) and sample.json "
           f"({len(s_ids)} tokens + {len(c_chains)} chain checks)")
 

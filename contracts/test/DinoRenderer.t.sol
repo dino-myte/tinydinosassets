@@ -78,6 +78,17 @@ contract DinoRendererTest is Test {
         }
     }
 
+    /// Every stored trait sprite (105 trait images + 15 unique flattened dinos)
+    /// must decode on-chain to exactly the source PNG (keccak of 1024-byte RGBA).
+    function test_Traits() public view {
+        string memory j = vm.readFile("./test/fixtures/traits.json");
+        uint256[] memory gids = vm.parseJsonUintArray(j, ".gids");
+        bytes32[] memory h = vm.parseJsonBytes32Array(j, ".rgbaHash");
+        for (uint256 i = 0; i < gids.length; i++) {
+            assertEq(keccak256(renderer.traitRGBA(gids[i])), h[i], _msg("trait", gids[i]));
+        }
+    }
+
     /// The metadata "current-chain" field must follow the deployment chain, while
     /// everything else stays identical (token #1 rendered on all 7 chains).
     function test_PerChain() public {

@@ -88,8 +88,28 @@ The test deploys the contracts, loads the real blobs, and asserts the renderer's
 output equals the Python fixtures — which are themselves proven exact against the
 original collection.
 
-> The Python EVM harness `build/evm_verify.py` does the same end-to-end check
-> without Foundry (uses `py-evm`), handy for CI.
+> The Python EVM harness runs the actual compiled contracts on `py-evm` and
+> compares directly against the repo files — no fixtures in between:
+> - `build/evm_verify.py` — Solidity output vs the proven fixtures
+> - `build/evm_vs_png.py` — Solidity SVG → rasterize → `images/dinos/16x16/original`
+> - `build/evm_comprehensive.py` — all four: dinos (16×16 **and upscaled to
+>   1600×1600**), every trait sprite (`traitRGBA` vs `images/traits/16x16`), and
+>   `tokenURI` JSON (base64-decoded vs `metadata/eth`). `EVM_STEP=1` covers all 10k.
+
+### Upscaling / resolution
+
+The on-chain image is an **SVG**, so it is resolution-independent: a marketplace
+renders it at any size as crisp solid blocks — i.e. a perfect nearest-neighbor
+enlargement of the canonical 16×16 pixels.
+
+Note on the repo's `1600×1600` PNGs: they are blocky 100× upscales of the 16×16
+(every 100×100 cell is one solid color), matching the on-chain output within ±1
+per channel for **9,795** tokens. The other **205** tokens — all `snow landscape`
+or `night landscape` backgrounds — have snow/star detail pixels that were
+rendered differently between the repo's own 16×16 and 1600×1600 files. The
+on-chain renderer reproduces the **16×16** set exactly (the canonical pixel art);
+this 16↔1600 divergence is a pre-existing inconsistency in the source assets, not
+a renderer issue.
 
 ## Deploy (future on-chain phase)
 
