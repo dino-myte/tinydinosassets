@@ -1,1 +1,11 @@
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated, regenerable via `python3 build/build.py` (kept out of git for size):
+build/orders.json
+contracts/test/fixtures/
+
+# Kept in git: build/out/ (the ~72KB on-chain deploy blobs + manifest)

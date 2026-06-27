@@ -1,0 +1,23 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+
+# The full-collection test (test_AllTokens) renders all 10,000 tokens in one
+# call, far past the default 2^30 gas cap. Raise both limits (u64 max).
+gas_limit = "18446744073709551615"
+block_gas_limit = "18446744073709551615"
+
+# Allow tests to read the build blobs and fixtures produced by build/*.py
+fs_permissions = [
+    { access = "read", path = "../build/out" },
+    { access = "read", path = "./test/fixtures" },
+]
+
+[fmt]
+line_length = 100
