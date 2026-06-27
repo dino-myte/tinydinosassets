@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Script, console2} from "forge-std/Script.sol";
 import {DinoStorage} from "../src/DinoStorage.sol";
 import {DinoRenderer} from "../src/DinoRenderer.sol";
+import {Web3Url} from "../src/lib/Web3Url.sol";
 
 /// @notice Deploys DinoStorage + DinoRenderer and loads the on-chain blobs.
 ///
@@ -45,8 +46,9 @@ contract Deploy is Script {
         vm.stopBroadcast();
 
         console2.log("chain         :", chain);
+        console2.log("chainId       :", block.chainid);
         console2.log("DinoStorage   :", address(store));
         console2.log("DinoRenderer  :", address(renderer));
-        console2.log("set baseURI to: web3://<renderer>:<chainId>/metadataJSON/");
+        console2.log("set baseURI to:", Web3Url.metadataBaseURI(address(renderer), block.chainid));
     }
 }

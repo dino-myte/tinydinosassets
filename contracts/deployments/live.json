@@ -1,0 +1,14 @@
+{
+  "_comment": "Live tiny dinos ERC-721s to repoint. owner is the same EOA on every chain and is the only address that can call setBaseURI. Renderer/Storage addresses get recorded under deployments/ after each Deploy run.",
+  "owner": "0xde7fce3a1cba4a705f299ce41d163017f165d666",
+  "tokenURI": "string.concat(baseURI, id)",
+  "chains": {
+    "eth":  { "chainId": 1,     "nft": "0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4" },
+    "avax": { "chainId": 43114, "nft": "0xaaeef52ad4695b8e3b758215ca6bbca4d7680c62" },
+    "bnb":  { "chainId": 56,    "nft": "0xaaeef52ad4695b8e3b758215ca6bbca4d7680c62" },
+    "poly": { "chainId": 137,   "nft": "0xaaeef52ad4695b8e3b758215ca6bbca4d7680c62" },
+    "arb":  { "chainId": 42161, "nft": "0xaaeef52ad4695b8e3b758215ca6bbca4d7680c62" },
+    "ftm":  { "chainId": 250,   "nft": "0xaaeef52ad4695b8e3b758215ca6bbca4d7680c62" },
+    "opt":  { "chainId": 10,    "nft": "0xaaeef52ad4695b8e3b758215ca6bbca4d7680c62" }
+  }
+}
