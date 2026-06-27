@@ -26,8 +26,10 @@ from PIL import Image
 from common import VIS, load_meta, load_original, load_sprite, px_list
 from encoding import ATTR_ORDER
 
-STORE = "0x44Ee00a054782aEBEe68762803fe813040110C4f"
-RENDERER = "0x3A10c274aB131a7A0397e75dB4Ec4448AE6B3BF3"
+_REC = json.load(open(os.path.join(os.path.dirname(__file__), os.pardir,
+                                   "contracts", "deployments", "base-preview.json")))
+STORE = _REC["contracts"]["DinoStorage"]
+RENDERER = _REC["contracts"]["DinoRenderer"]
 RPCS = [
     "https://base-rpc.publicnode.com",
     "https://base.drpc.org",
@@ -140,7 +142,9 @@ def main():
         got = [(raw[k], raw[k + 1], raw[k + 2], raw[k + 3]) for k in range(0, 1024, 4)]
         if got != px_list(load_original(utok)):
             tbad += 1; print(f"   MISMATCH unique #{utok}")
-    print(f"   traits exact: {120 - tbad}/120 (105 traits + 15 uniques)")
+    ntraits = sum(len(values[c]) for c in VIS) + len(M["unique_tokens"])
+    print(f"   traits exact: {ntraits - tbad}/{ntraits} "
+          f"({M['n_composite_sprites']} traits + {len(M['unique_tokens'])} uniques)")
     fails += tbad
 
     # 3. IMAGES + ATTRIBUTES (live sample)
