@@ -14,7 +14,7 @@ import json
 import os
 import struct
 
-from common import VIS
+from common import SUPPLY, VIS
 from encoding import (ATTR_ORDER, OUT_DIR, WIDTHS, build_dictionaries,
                       decode_sprite, encode_sprite, sprite_pixels_for,
                       unique_pixels_for)
@@ -81,7 +81,7 @@ def main():
     from common import load_meta, is_unique
     order_of = d["order_of"]
     tokens = bytearray()
-    for tok in range(1, 10001):
+    for tok in range(1, SUPPLY + 1):
         _, attrs = load_meta(tok)
         if is_unique(attrs):
             f = {"unique": True, "uimg": uimg_id[tok], "one": one_id[attrs["1/1"]],
@@ -92,7 +92,7 @@ def main():
             for c in VIS:
                 f[c] = values[c].index(attrs[c])
         tokens += pack_token(f)
-    assert len(tokens) == 10000 * TOKEN_BYTES
+    assert len(tokens) == SUPPLY * TOKEN_BYTES
 
     # ---- write blobs ----
     with open(os.path.join(OUT_DIR, "sprites.bin"), "wb") as fh:
@@ -104,7 +104,7 @@ def main():
         fh.write(tokens)
 
     manifest = {
-        "supply": 10000,
+        "supply": SUPPLY,
         "n_composite_sprites": n_composite,
         "n_unique_sprites": len(unique_tokens),
         "n_sprites": n_sprites,

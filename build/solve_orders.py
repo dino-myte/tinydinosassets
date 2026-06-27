@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-from common import (CAT_INDEX, ROOT, VIS, composite_pixels, is_unique,
+from common import (CAT_INDEX, ROOT, SUPPLY, VIS, composite_pixels, is_unique,
                     load_meta, load_original, load_sprite, px_list)
 
 OUT = os.path.join(ROOT, "build", "orders.json")
@@ -82,7 +82,7 @@ def solve_token(tok):
 def main():
     orders = {}
     failed = []
-    for tok in range(1, 10001):
+    for tok in range(1, SUPPLY + 1):
         r = solve_token(tok)
         if r is None:
             failed.append(tok)

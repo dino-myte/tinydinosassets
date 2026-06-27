@@ -19,7 +19,7 @@ import {Web3Url} from "../src/lib/Web3Url.sol";
 contract DeployTestCollection is Script {
     uint256 internal constant CHUNK = 24000;     // token-blob chunk bytes (<=24KB)
     uint256 internal constant MINT_BATCH = 2000; // tokens per mint tx
-    uint256 internal constant SUPPLY = 10000;
+    uint256 internal constant SUPPLY = 10001;    // 1..10000 + the bonus 1/1 "bug" (#10001)
 
     function run() external {
         string memory chain = vm.envOr("CHAIN", string("eth"));

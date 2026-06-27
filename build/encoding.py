@@ -8,8 +8,8 @@ import collections
 import json
 import os
 
-from common import (CHAINS, ROOT, VIS, is_unique, load_meta, load_original,
-                    load_sprite, px_list)
+from common import (CHAINS, ROOT, SUPPLY, VIS, is_unique, load_meta,
+                    load_original, load_sprite, px_list)
 
 # Attribute output order in the original metadata: visual cats alphabetical, then "minted on".
 ATTR_ORDER = sorted(VIS)  # ['background','body','chest','eyes','face','feet','hands','head','spikes']
@@ -45,7 +45,7 @@ def build_dictionaries():
     distinct_orders = set()
     order_of = {}
 
-    for tok in range(1, 10001):
+    for tok in range(1, SUPPLY + 1):
         _, attrs = load_meta(tok)
         mintons.add(attrs["minted on"])
         if is_unique(attrs):

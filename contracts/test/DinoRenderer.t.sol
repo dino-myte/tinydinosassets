@@ -32,7 +32,7 @@ contract DinoRendererTest is Test {
 
         renderer = new DinoRenderer(store, "eth");
 
-        assertEq(store.totalTokens(), 10000, "token count");
+        assertEq(store.totalTokens(), 10001, "token count");
     }
 
     /// Full-collection coverage via keccak hashes (heavy). Run explicitly:
@@ -50,7 +50,7 @@ contract DinoRendererTest is Test {
         assembly {
             fmp := mload(0x40)
         }
-        for (uint256 i = 0; i < 10000; i++) {
+        for (uint256 i = 0; i < svgH.length; i++) {
             uint256 id = i + 1;
             require(keccak256(bytes(renderer.imageSVG(id))) == svgH[i], "svg");
             require(keccak256(bytes(renderer.metadataJSON(id))) == jsonH[i], "json");
