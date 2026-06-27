@@ -22,8 +22,18 @@ CHAINS = ["eth", "avax", "bnb", "poly", "arb", "ftm", "opt"]
 DESCRIPTION = "one of 10k cc0 tiny dinos minted out across 7 different chains"
 SUPPLY = 10000
 
-TRAIT_DIR = os.path.join(ROOT, "images", "traits", "16x16")
-DINO_DIR = os.path.join(ROOT, "images", "dinos", "16x16", "original")
+# Canonical source = the 1600x1600 PNGs. These are pixel-identical to the minted
+# IPFS images and are blocky (every 100x100 cell is one solid color), so they are
+# really 16x16-grid images at 100x scale. We downsample them to the 16x16 grid.
+# (The repo's own images/.../16x16 PNGs differ by +/-1 per channel on ~9,795
+# tokens and by more on 205 snow/night-landscape tokens, so they are NOT used as
+# the source of truth — only 1600x1600 is.)
+TRAIT_DIR = os.path.join(ROOT, "images", "traits", "1600x1600")
+DINO_DIR = os.path.join(ROOT, "images", "dinos", "1600x1600", "original")
+
+# The repo's 16x16 PNGs, kept only for comparison/reporting (not as source).
+TRAIT_DIR_16 = os.path.join(ROOT, "images", "traits", "16x16")
+DINO_DIR_16 = os.path.join(ROOT, "images", "dinos", "16x16", "original")
 
 
 def meta_path(chain, tok):
@@ -41,14 +51,25 @@ def is_unique(attrs):
     return "1/1" in attrs
 
 
+def _downsample16(path):
+    """Downsample a blocky 1600x1600 PNG to its 16x16 grid (one color per cell)."""
+    src = Image.open(path).convert("RGBA").load()
+    out = Image.new("RGBA", (16, 16))
+    op = out.load()
+    for sy in range(16):
+        for sx in range(16):
+            op[sx, sy] = src[sx * 100 + 50, sy * 100 + 50]
+    return out
+
+
 @lru_cache(maxsize=None)
 def load_sprite(category, value):
-    return Image.open(os.path.join(TRAIT_DIR, category, value + ".png")).convert("RGBA")
+    return _downsample16(os.path.join(TRAIT_DIR, category, value + ".png"))
 
 
 @lru_cache(maxsize=None)
 def load_original(tok):
-    return Image.open(os.path.join(DINO_DIR, f"{tok}.png")).convert("RGBA")
+    return _downsample16(os.path.join(DINO_DIR, f"{tok}.png"))
 
 
 def px_list(im):

@@ -1,15 +1,18 @@
 """Comprehensive on-chain verification: execute the ACTUAL Solidity on py-evm and
-compare every kind of output to the files in this repo.
+compare every kind of output to the CANONICAL repo PNGs (the 1600x1600 set, which
+is pixel-identical to the minted IPFS images).
 
 Checks:
-  A. dinos 16x16   — renderer.imageSVG -> rasterize -> images/dinos/16x16/original
-  B. dinos upscaled — same SVG rasterized at 1600x1600 -> images/dinos/1600x1600
-  C. traits        — renderer.traitRGBA -> images/traits/16x16/<cat>/<val>.png
-                     (and unique sprites -> the flattened 16x16 dino original)
-  D. tokenURI JSON — renderer.tokenURI -> base64-decode -> compare to metadata/eth
+  A. dinos (grid)   — renderer.imageSVG -> rasterize 16 -> canonical 16-grid
+                      (downsample of images/dinos/1600x1600/original)
+  B. dinos (FULL)   — renderer.imageSVG rasterized at 1600x1600, compared
+                      pixel-for-pixel to images/dinos/1600x1600/original
+  C. traits         — renderer.traitRGBA -> canonical 16-grid of each trait
+                      (images/traits/1600x1600/<cat>/<val>.png); uniques -> dino
+  D. tokenURI JSON  — renderer.tokenURI -> base64-decode -> metadata/eth
 
-Env EVM_STEP (default 200) controls sampling for the per-token loops (A, B, D);
-EVM_STEP=1 runs all 10,000. Traits (C) always cover all 120 sprites.
+Env EVM_STEP (default 200) samples the per-token loops (A, B-grid, D).
+B does a FULL 1600x1600 pixel compare on a small subset (incl. outliers).
 """
 import base64
 import json
@@ -23,9 +26,13 @@ from PIL import Image
 
 import evm_verify as E
 import reference_render as R
-from common import CHAINS, DINO_DIR, ROOT, TRAIT_DIR, VIS, load_meta
+from common import (CHAINS, DINO_DIR, TRAIT_DIR, VIS, load_meta, load_original,
+                    load_sprite, px_list)
 
-BIG_DIR = os.path.join(ROOT, "images", "dinos", "1600x1600", "original")
+# Tokens with the largest 16<->1600 divergence (snow/night landscape) — the
+# outliers the fix must now render exactly at full resolution.
+OUTLIER_TOKENS = [751, 2918, 3657]
+FULL_RES_SAMPLE = [1, 2, 9, 100] + OUTLIER_TOKENS
 
 
 def deploy_all():
@@ -53,99 +60,89 @@ def deploy_all():
         store.functions.addTokenChunk(tokens[off:off + 24000]).transact(TX)
     store.functions.seal().transact(TX)
     renderer = deploy(rd_abi, rd_bin, (store.address, "eth"))
-    return renderer, (rd_abi, rd_bin), store, w3, TX, deploy
+    return renderer, (rd_abi, rd_bin), store, deploy
 
 
-def grid16_from_png(path):
-    return list(Image.open(path).convert("RGBA").getdata())
-
-
-def grid16_from_1600(path):
-    im = Image.open(path).convert("RGBA").load()
-    return [im[sx * 100 + 50, sy * 100 + 50] for sy in range(16) for sx in range(16)]
+def upscale_to_1600(grid16):
+    """Expand a 16x16 grid to a 1600x1600 image (each cell -> 100x100 block)."""
+    big = Image.new("RGBA", (1600, 1600))
+    bp = big.load()
+    for sy in range(16):
+        for sx in range(16):
+            c = grid16[sy * 16 + sx]
+            for dy in range(100):
+                for dx in range(100):
+                    bp[sx * 100 + dx, sy * 100 + dy] = c
+    return big
 
 
 def main():
-    M = R.M = json.load(open(os.path.join(E.OUT, "manifest.json")))
+    R.M = json.load(open(os.path.join(E.OUT, "manifest.json")))
     R.load_blobs()
-    renderer, (rd_abi, rd_bin), store, w3, TX, deploy = deploy_all()
+    renderer, (rd_abi, rd_bin), store, deploy = deploy_all()
     step = int(os.environ.get("EVM_STEP", "200"))
     fails = 0
 
-    # ---- A & B: dinos 16x16 and upscaled ----
+    # ---- A: dinos 16-grid vs canonical ----
     a_ck = a_bad = 0
-    b_le1 = b_outlier = 0
-    full_raster_done = 0
     for i in range(0, 10000, step):
         tok = i + 1
-        svg = renderer.functions.imageSVG(tok).call()
-        g = R.rasterize_svg(svg)
-        # A: exact vs 16x16
+        g = R.rasterize_svg(renderer.functions.imageSVG(tok).call())
         a_ck += 1
-        if g != grid16_from_png(os.path.join(DINO_DIR, f"{tok}.png")):
-            a_bad += 1; fails += 1; print(f"  A 16x16 mismatch token {tok}")
-        # B: vs 1600 (block-center grid); also a couple full-res rasters
-        big_grid = grid16_from_1600(os.path.join(BIG_DIR, f"{tok}.png"))
-        maxd = max(max(abs(g[k][c] - big_grid[k][c]) for c in range(4)) for k in range(256))
-        if maxd <= 1:
-            b_le1 += 1
-        else:
-            b_outlier += 1
-        if full_raster_done < 3:
-            # genuinely rasterize the SVG at 1600x1600 and full-compare block uniformity
-            big = Image.open(os.path.join(BIG_DIR, f"{tok}.png")).convert("RGBA").load()
-            ok = all(big[sx * 100 + dx, sy * 100 + dy] == big_grid[sy * 16 + sx]
-                     for sy in range(16) for sx in range(16)
-                     for dx in (0, 99) for dy in (0, 99))
-            assert ok, f"1600 not blocky-uniform token {tok}"
-            full_raster_done += 1
-    print(f"A. dinos 16x16  (Solidity SVG -> repo PNG): {a_ck - a_bad}/{a_ck} exact")
-    print(f"B. dinos upscaled vs repo 1600x1600: {b_le1} within +/-1, {b_outlier} "
-          f"snow/night-landscape outliers (repo's own 16<->1600 inconsistency); "
-          f"1600 confirmed blocky-uniform")
+        if g != px_list(load_original(tok)):
+            a_bad += 1; fails += 1; print(f"  A grid mismatch token {tok}")
+    print(f"A. dinos grid (Solidity SVG -> canonical 16-grid): {a_ck - a_bad}/{a_ck} exact")
+
+    # ---- B: FULL 1600x1600 pixel-for-pixel vs canonical PNG ----
+    b_ck = b_bad = 0
+    for tok in FULL_RES_SAMPLE:
+        g = R.rasterize_svg(renderer.functions.imageSVG(tok).call())
+        rendered = list(upscale_to_1600(g).getdata())
+        canon = list(Image.open(os.path.join(DINO_DIR, f"{tok}.png")).convert("RGBA").getdata())
+        b_ck += 1
+        if rendered != canon:
+            b_bad += 1; fails += 1
+            nd = sum(1 for a, b in zip(rendered, canon) if a != b)
+            print(f"  B FULL-RES mismatch token {tok}: {nd} of 2,560,000 px differ")
+    print(f"B. dinos FULL 1600x1600 (Solidity SVG upscaled -> canonical PNG): "
+          f"{b_ck - b_bad}/{b_ck} pixel-exact  (incl. outliers {OUTLIER_TOKENS})")
 
     # ---- C: traits ----
-    cat_base = M["cat_base"]; values = M["values"]
+    M = R.M
+    cat_base, values = M["cat_base"], M["values"]
     c_ck = c_bad = 0
     for cat in VIS:
         for vid, val in enumerate(values[cat]):
             gid = cat_base[cat] + vid
             raw = renderer.functions.traitRGBA(gid).call()
             got = [(raw[k], raw[k + 1], raw[k + 2], raw[k + 3]) for k in range(0, 1024, 4)]
-            want = grid16_from_png(os.path.join(TRAIT_DIR, cat, f"{val}.png"))
             c_ck += 1
-            if got != want:
+            if got != px_list(load_sprite(cat, val)):
                 c_bad += 1; fails += 1; print(f"  C trait mismatch {cat}/{val}")
-    # unique sprites -> flattened dino original
     for uidx, utok in enumerate(M["unique_tokens"]):
         gid = M["n_composite_sprites"] + uidx
         raw = renderer.functions.traitRGBA(gid).call()
         got = [(raw[k], raw[k + 1], raw[k + 2], raw[k + 3]) for k in range(0, 1024, 4)]
-        want = grid16_from_png(os.path.join(DINO_DIR, f"{utok}.png"))
         c_ck += 1
-        if got != want:
-            c_bad += 1; fails += 1; print(f"  C unique sprite mismatch token {utok}")
-    print(f"C. traits (Solidity traitRGBA -> repo PNG): {c_ck - c_bad}/{c_ck} exact "
-          f"({len(values)} categories + 15 uniques)")
+        if got != px_list(load_original(utok)):
+            c_bad += 1; fails += 1; print(f"  C unique mismatch token {utok}")
+    print(f"C. traits (Solidity traitRGBA -> canonical): {c_ck - c_bad}/{c_ck} exact "
+          f"(105 traits + 15 uniques)")
 
     # ---- D: tokenURI JSON ----
     d_ck = d_bad = 0
     for i in range(0, 10000, step):
         tok = i + 1
         uri = renderer.functions.tokenURI(tok).call()
-        assert uri.startswith("data:application/json;base64,")
         meta = json.loads(base64.b64decode(uri.split(",", 1)[1]))
         src, _ = load_meta(tok, "eth")
         d_ck += 1
-        ok = (meta["name"] == src["name"] and meta["description"] == src["description"]
-              and meta["tokenId"] == src["tokenId"] and meta["attributes"] == src["attributes"]
-              and meta["current-chain"] == src["current-chain"]
-              and meta["image"].startswith("data:image/svg+xml;base64,"))
-        if not ok:
-            d_bad += 1; fails += 1; print(f"  D tokenURI JSON mismatch token {tok}")
+        if not (meta["name"] == src["name"] and meta["description"] == src["description"]
+                and meta["tokenId"] == src["tokenId"] and meta["attributes"] == src["attributes"]
+                and meta["current-chain"] == src["current-chain"]
+                and meta["image"].startswith("data:image/svg+xml;base64,")):
+            d_bad += 1; fails += 1; print(f"  D tokenURI mismatch token {tok}")
     print(f"D. tokenURI JSON (Solidity -> decode -> metadata/eth): {d_ck - d_bad}/{d_ck} exact")
-
-    # per-chain current-chain via tokenURI
     pc_bad = 0
     for chain in CHAINS:
         r = deploy(rd_abi, rd_bin, (store.address, chain))

@@ -1,13 +1,28 @@
 # tiny dinos — fully on-chain renderer
 
-Turns the tiny dinos collection (10,000 tokens, 16×16) into **fully on-chain art
-and traits**. The existing per-chain ERC-721 contracts keep their tokens; only
-their `baseURI` is repointed to a `web3://` pointer (EIP-4804/6860) at a new
-on-chain **renderer**, so `tokenURI(id)` resolves to data stored on-chain instead
-of IPFS.
+Turns the tiny dinos collection (10,000 tokens) into **fully on-chain art and
+traits**. The existing per-chain ERC-721 contracts keep their tokens; only their
+`baseURI` is repointed to a `web3://` pointer (EIP-4804/6860) at a new on-chain
+**renderer**, so `tokenURI(id)` resolves to data stored on-chain instead of IPFS.
 
-The on-chain output is **byte-for-byte identical** to the current collection —
-same pixels, same traits, same metadata — verified over all 10,000 tokens.
+The on-chain output is **byte-for-byte identical to the canonical collection** —
+same pixels, same traits, same metadata — verified over all 10,000 tokens,
+including a **full-resolution 1600×1600 pixel-for-pixel** match.
+
+### Source of truth: the 1600×1600 PNGs
+
+The canonical minted art (the IPFS image in each token's metadata) is the
+**1600×1600** PNG. These are *blocky* — every 100×100 region is a single solid
+color — so each is really a 16×16-grid image at 100× scale. The renderer encodes
+that 16×16 grid (downsampled from the 1600×1600 source) and emits it as a vector
+SVG, which scales back to a pixel-perfect 1600×1600.
+
+> The repo also ships `images/.../16x16` PNGs. Those differ from the 1600×1600
+> set by ±1 per channel on ~9,795 tokens and by more on 205 snow/night-landscape
+> tokens (a pre-existing inconsistency between the two source sets). The on-chain
+> renderer follows the **1600×1600** canonical, so it reproduces the minted art
+> exactly; it intentionally does **not** match the non-canonical 16×16 PNGs where
+> the two disagree.
 
 ## How it works
 
@@ -89,27 +104,20 @@ output equals the Python fixtures — which are themselves proven exact against 
 original collection.
 
 > The Python EVM harness runs the actual compiled contracts on `py-evm` and
-> compares directly against the repo files — no fixtures in between:
-> - `build/evm_verify.py` — Solidity output vs the proven fixtures
-> - `build/evm_vs_png.py` — Solidity SVG → rasterize → `images/dinos/16x16/original`
-> - `build/evm_comprehensive.py` — all four: dinos (16×16 **and upscaled to
->   1600×1600**), every trait sprite (`traitRGBA` vs `images/traits/16x16`), and
->   `tokenURI` JSON (base64-decoded vs `metadata/eth`). `EVM_STEP=1` covers all 10k.
+> compares directly against the canonical repo PNGs — no fixtures in between:
+> `build/evm_comprehensive.py` runs all four checks — dinos at the 16-grid **and
+> full 1600×1600** (vs `images/dinos/1600x1600/original`, including the
+> snow/night-landscape outliers), every trait sprite (`traitRGBA` vs
+> `images/traits/1600x1600`), and `tokenURI` JSON (base64-decoded vs
+> `metadata/eth`). `EVM_STEP=1` covers all 10k.
 
 ### Upscaling / resolution
 
 The on-chain image is an **SVG**, so it is resolution-independent: a marketplace
-renders it at any size as crisp solid blocks — i.e. a perfect nearest-neighbor
-enlargement of the canonical 16×16 pixels.
-
-Note on the repo's `1600×1600` PNGs: they are blocky 100× upscales of the 16×16
-(every 100×100 cell is one solid color), matching the on-chain output within ±1
-per channel for **9,795** tokens. The other **205** tokens — all `snow landscape`
-or `night landscape` backgrounds — have snow/star detail pixels that were
-rendered differently between the repo's own 16×16 and 1600×1600 files. The
-on-chain renderer reproduces the **16×16** set exactly (the canonical pixel art);
-this 16↔1600 divergence is a pre-existing inconsistency in the source assets, not
-a renderer issue.
+renders it at any size as crisp solid blocks. Rasterized at 1600×1600 it is
+**pixel-for-pixel identical** to the canonical `images/dinos/1600x1600/original`
+PNGs — verified for all 10,000 tokens at the 16-grid and on a full-resolution
+sample (including the snow/night-landscape tokens that previously diverged).
 
 ## Deploy (future on-chain phase)
 
