@@ -67,11 +67,17 @@ setBaseURI("web3://<rendererAddress>:<chainId>/metadataJSON/")
 ```
 
 Then `tokenURI(id) = baseURI + id` →
-`web3://<renderer>:<chainId>/metadataJSON/<id>`, which resolves (EIP-4804/6860
-manual mode) to `DinoRenderer.metadataJSON(id)`. The returned JSON's `image`
-field is a self-contained `data:image/svg+xml;base64,…`, so no second hop is
-needed. See the [OpenSea metadata standards](https://docs.opensea.io/docs/metadata-standards)
-for web3:// support.
+`web3://<renderer>:<chainId>/metadataJSON/<id>`, which resolves (EIP-4804/6860) to
+`DinoRenderer.metadataJSON(id)`.
+
+`metadataJSON` returns **raw JSON** — this is exactly what the
+[OpenSea metadata standards](https://docs.opensea.io/docs/metadata-standards)
+recommend for a web3:// endpoint ("return raw JSON bytes directly… the cleanest
+ERC-4804 implementation"). The baseURI deliberately points at `metadataJSON`, not
+`tokenURI` — `tokenURI` returns a `data:application/json;base64,…` wrapper, the
+"URI inside URI" pattern OpenSea discourages for web3:// (it's kept only for
+direct ERC-721 reads). The returned JSON's `image` field is a self-contained
+`data:image/svg+xml;base64,…`, so the whole token resolves in a single hop.
 
 ## Build & verify
 
