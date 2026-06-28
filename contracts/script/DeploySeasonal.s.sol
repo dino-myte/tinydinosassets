@@ -19,28 +19,31 @@ contract DeploySeasonal is Script {
         string memory season = vm.envString("SEASON");
         string memory disp = _displayName(season);
         string memory desc = _description(season);
-        string memory base = string.concat("../build/seasons/out/", season, "/");
+        string memory base = string.concat("../build/seasons/out_b/", season, "/");
         string memory mf = vm.readFile(string.concat(base, "manifest.json"));
 
-        uint256 nData = vm.parseJsonUint(mf, ".nDataChunks");
-        uint256 nLoc = vm.parseJsonUint(mf, ".nLocChunks");
         uint256 count = vm.parseJsonUint(mf, ".count");
-        uint256 locPerChunk = vm.parseJsonUint(mf, ".locPerChunk");
 
         vm.startBroadcast();
-
         SeasonalStorage store = new SeasonalStorage();
-        for (uint256 i = 0; i < nData; i++) {
+
+        for (uint256 i = 0; i < vm.parseJsonUint(mf, ".nSpriteChunks"); i++) {
+            store.addSpriteChunk(vm.readFileBinary(string.concat(base, "sprites/", _pad4(i), ".bin")));
+        }
+        for (uint256 i = 0; i < vm.parseJsonUint(mf, ".nDataChunks"); i++) {
             store.addDataChunk(vm.readFileBinary(string.concat(base, "data/", _pad4(i), ".bin")));
         }
-        for (uint256 i = 0; i < nLoc; i++) {
+        for (uint256 i = 0; i < vm.parseJsonUint(mf, ".nLocChunks"); i++) {
             store.addLocChunk(vm.readFileBinary(string.concat(base, "loc/", _pad4(i), ".bin")));
         }
-        store.setStrings(
+        store.setBlobs(
+            vm.readFileBinary(string.concat(base, "spriteLoc.bin")),
+            vm.readFileBinary(string.concat(base, "corrPalette.bin")),
             bytes(vm.readFile(string.concat(base, "cats.txt"))),
-            bytes(vm.readFile(string.concat(base, "vals.txt")))
+            bytes(vm.readFile(string.concat(base, "vals.txt"))),
+            bytes(vm.readFile(string.concat(base, "one.txt")))
         );
-        store.setMeta(count, locPerChunk);
+        store.setMeta(count, vm.parseJsonUint(mf, ".locPerChunk"), _u16x9(mf, ".catBase"), _u8x9(mf, ".alphaIdx"));
         store.seal();
 
         SeasonalRenderer renderer = new SeasonalRenderer(store, disp, desc);
@@ -52,7 +55,6 @@ contract DeploySeasonal is Script {
         }
         string memory baseURI = Web3Url.metadataBaseURI(address(renderer), block.chainid);
         nft.setBaseURI(baseURI);
-
         vm.stopBroadcast();
 
         console2.log("season        :", season);
@@ -62,6 +64,16 @@ contract DeploySeasonal is Script {
         console2.log("count         :", count);
         console2.log("baseURI       :", baseURI);
         console2.log("tokenURI(1)   :", nft.tokenURI(1));
+    }
+
+    function _u16x9(string memory mf, string memory key) internal pure returns (uint16[9] memory a) {
+        uint256[] memory v = vm.parseJsonUintArray(mf, key);
+        for (uint256 i = 0; i < 9; i++) a[i] = uint16(v[i]);
+    }
+
+    function _u8x9(string memory mf, string memory key) internal pure returns (uint8[9] memory a) {
+        uint256[] memory v = vm.parseJsonUintArray(mf, key);
+        for (uint256 i = 0; i < 9; i++) a[i] = uint8(v[i]);
     }
 
     function _displayName(string memory s) internal pure returns (string memory) {
@@ -82,10 +94,7 @@ contract DeploySeasonal is Script {
 
     function _pad4(uint256 v) internal pure returns (string memory) {
         bytes memory s = new bytes(4);
-        for (uint256 i = 0; i < 4; i++) {
-            s[3 - i] = bytes1(uint8(48 + (v % 10)));
-            v /= 10;
-        }
+        for (uint256 i = 0; i < 4; i++) { s[3 - i] = bytes1(uint8(48 + (v % 10))); v /= 10; }
         return string(s);
     }
 }

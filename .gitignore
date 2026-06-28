@@ -11,6 +11,7 @@ contracts/test/fixtures/
 # Seasonal working dirs (regenerable); raw IPFS originals live in images/seasons + metadata/seasons
 build/seasons/data/
 build/seasons/out/
+build/seasons/out_b/
 build/seasons/manifests/
 
 # Kept in git: build/out/ (the ~72KB on-chain deploy blobs + manifest)
