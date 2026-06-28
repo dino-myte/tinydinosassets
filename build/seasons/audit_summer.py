@@ -27,34 +27,46 @@ OUT = os.path.join(HERE, "out_b", "summer")
 REC = json.load(open(os.path.join(ROOT, "contracts", "deployments", "summer-base.json")))
 STORE = REC["contracts"]["SeasonalStorage"]
 REND = REC["contracts"]["SeasonalRenderer"]
-RPCS = ["https://base-rpc.publicnode.com", "https://base.drpc.org", "https://mainnet.base.org"]
+RPCS = [
+    "https://base-rpc.publicnode.com",
+    "https://base.drpc.org",
+    "https://mainnet.base.org",
+    "https://base.meowrpc.com",
+    "https://base.blockpi.network/v1/rpc/public",
+    "https://1rpc.io/base",
+    "https://base-mainnet.public.blastapi.io",
+]
 
 
 def sel(s):
     h = keccak.new(digest_bits=256); h.update(s.encode()); return h.hexdigest()[:8]
 
 
-def rpc(method, params):
+_tl = __import__("threading").local()
+
+
+def rpc(method, params, gw0=0):
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
     last = None
-    for a in range(8):
+    n = len(RPCS)
+    for a in range(24):
         try:
-            req = urllib.request.Request(RPCS[a % len(RPCS)], data=body,
+            req = urllib.request.Request(RPCS[(gw0 + a) % n], data=body,
                                          headers={"content-type": "application/json", "User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=25) as r:
+            with urllib.request.urlopen(req, timeout=20) as r:
                 d = json.load(r)
             if "result" in d:
                 return d["result"]
             last = d.get("error")
         except Exception as e:
             last = e
-        time.sleep(0.4)
+        time.sleep(min(2.0, 0.2 * (a + 1)))
     raise RuntimeError(f"rpc {method}: {last}")
 
 
-def call(to, sig, *uints):
+def call(to, sig, *uints, gw0=0):
     data = "0x" + sel(sig) + "".join(f"{a:064x}" for a in uints)
-    return rpc("eth_call", [{"to": to, "data": data}, "latest"])
+    return rpc("eth_call", [{"to": to, "data": data}, "latest"], gw0=gw0)
 
 
 def dec_bytes(res):
@@ -126,19 +138,33 @@ def main():
         if "1/1" in {a["trait_type"] for a in json.load(open(os.path.join(ROOT, "metadata", "seasons", "summer", str(tid))))["attributes"]}:
             one_ids.add(tid)
     ids = sorted(set(ids) | one_ids | {1, M["count"]})
-    img_bad = attr_bad = 0
-    for k, tid in enumerate(ids):
-        meta = json.loads(dec_str(call(REND, "metadataJSON(uint256)", tid)))
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+    lock = threading.Lock()
+    prog = [0]
+
+    def check(tid):
+        meta = json.loads(dec_str(call(REND, "metadataJSON(uint256)", tid, gw0=tid % len(RPCS))))
         svg = base64.b64decode(meta["image"].split(",", 1)[1]).decode()
-        if raster(svg) != grid16(tid):
-            img_bad += 1; print(f"   image MISMATCH #{tid}")
+        img_ok = raster(svg) == grid16(tid)
         src = json.load(open(os.path.join(ROOT, "metadata", "seasons", "summer", str(tid))))
         got = {a["trait_type"]: a["value"] for a in meta["attributes"]}
         want = {a["trait_type"]: a["value"] for a in src["attributes"]}
-        if got != want or meta["name"] != f'{M["displayName"]} #{tid}':
-            attr_bad += 1; print(f"   trait MISMATCH #{tid}: {got} vs {want}")
-        if (k + 1) % 200 == 0:
-            print(f"   ...{k + 1}/{len(ids)}", flush=True)
+        attr_ok = got == want and meta["name"] == f'{M["displayName"]} #{tid}'
+        with lock:
+            prog[0] += 1
+            if prog[0] % 500 == 0:
+                print(f"   ...{prog[0]}/{len(ids)}", flush=True)
+        return tid, img_ok, attr_ok, got, want
+
+    img_bad = attr_bad = 0
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        for f in as_completed([ex.submit(check, t) for t in ids]):
+            tid, img_ok, attr_ok, got, want = f.result()
+            if not img_ok:
+                img_bad += 1; print(f"   image MISMATCH #{tid}")
+            if not attr_ok:
+                attr_bad += 1; print(f"   trait MISMATCH #{tid}: {got} vs {want}")
     print(f"   live render exact: {len(ids)-img_bad}/{len(ids)}  traits exact: {len(ids)-attr_bad}/{len(ids)} "
           f"(incl. all {len(one_ids)} 1/1 tokens)")
     fails += img_bad + attr_bad
