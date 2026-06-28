@@ -7,43 +7,49 @@ import {SeasonalRenderer} from "../src/seasonal/SeasonalRenderer.sol";
 import {SeasonalDinos721} from "../src/seasonal/SeasonalDinos721.sol";
 import {Web3Url} from "../src/lib/Web3Url.sol";
 
-/// @notice Deploy one seasonal collection (storage + renderer + mimic 721), mint
-/// the real token ids, and point baseURI at the renderer via web3://.
+/// @notice Deploy one seasonal collection (ids 1..count): storage + renderer +
+/// mimic 721, mint the contiguous id range, point baseURI at the renderer.
 ///
 ///   SEASON=summer forge script script/DeploySeasonal.s.sol \
-///     --rpc-url <RPC> --broadcast --private-key <KEY>
+///     --rpc-url <RPC> --broadcast --private-key <KEY> --slow
 contract DeploySeasonal is Script {
-    uint256 internal constant CHUNK = 24000;
+    uint256 internal constant MINT_BATCH = 2000;
 
     function run() external {
         string memory season = vm.envString("SEASON");
         string memory disp = _displayName(season);
         string memory desc = _description(season);
         string memory base = string.concat("../build/seasons/out/", season, "/");
+        string memory mf = vm.readFile(string.concat(base, "manifest.json"));
 
-        bytes memory sprites = vm.readFileBinary(string.concat(base, "sprites.bin"));
-        bytes memory offsets = vm.readFileBinary(string.concat(base, "spriteOffsets.bin"));
-        bytes memory idsBlob = vm.readFileBinary(string.concat(base, "ids.bin"));
-        bytes memory records = vm.readFileBinary(string.concat(base, "records.bin"));
-        bytes memory recOff = vm.readFileBinary(string.concat(base, "recordOffsets.bin"));
-        bytes memory cats = bytes(vm.readFile(string.concat(base, "cats.txt")));
-        bytes memory vals = bytes(vm.readFile(string.concat(base, "vals.txt")));
+        uint256 nData = vm.parseJsonUint(mf, ".nDataChunks");
+        uint256 nLoc = vm.parseJsonUint(mf, ".nLocChunks");
+        uint256 count = vm.parseJsonUint(mf, ".count");
+        uint256 locPerChunk = vm.parseJsonUint(mf, ".locPerChunk");
 
         vm.startBroadcast();
 
         SeasonalStorage store = new SeasonalStorage();
-        for (uint256 off = 0; off < sprites.length; off += CHUNK) {
-            uint256 end = off + CHUNK > sprites.length ? sprites.length : off + CHUNK;
-            store.addSpriteChunk(_slice(sprites, off, end));
+        for (uint256 i = 0; i < nData; i++) {
+            store.addDataChunk(vm.readFileBinary(string.concat(base, "data/", _pad4(i), ".bin")));
         }
-        store.setBlobs(offsets, idsBlob, records, recOff, cats, vals);
+        for (uint256 i = 0; i < nLoc; i++) {
+            store.addLocChunk(vm.readFileBinary(string.concat(base, "loc/", _pad4(i), ".bin")));
+        }
+        store.setStrings(
+            bytes(vm.readFile(string.concat(base, "cats.txt"))),
+            bytes(vm.readFile(string.concat(base, "vals.txt")))
+        );
+        store.setMeta(count, locPerChunk);
         store.seal();
 
         SeasonalRenderer renderer = new SeasonalRenderer(store, disp, desc);
 
         SeasonalDinos721 nft = new SeasonalDinos721(disp, "dino");
-        uint256[] memory ids = _parseIds(idsBlob);
-        nft.mintBatch(ids);
+        for (uint256 from = 1; from <= count; from += MINT_BATCH) {
+            uint256 qty = from + MINT_BATCH > count + 1 ? count + 1 - from : MINT_BATCH;
+            nft.mintRange(from, qty);
+        }
         string memory baseURI = Web3Url.metadataBaseURI(address(renderer), block.chainid);
         nft.setBaseURI(baseURI);
 
@@ -53,9 +59,9 @@ contract DeploySeasonal is Script {
         console2.log("SeasonalStorage :", address(store));
         console2.log("SeasonalRenderer:", address(renderer));
         console2.log("SeasonalDinos721:", address(nft));
-        console2.log("tokens minted :", ids.length);
+        console2.log("count         :", count);
         console2.log("baseURI       :", baseURI);
-        console2.log("sample tokenURI:", nft.tokenURI(ids[0]));
+        console2.log("tokenURI(1)   :", nft.tokenURI(1));
     }
 
     function _displayName(string memory s) internal pure returns (string memory) {
@@ -74,16 +80,12 @@ contract DeploySeasonal is Script {
         revert("unknown season");
     }
 
-    function _parseIds(bytes memory b) internal pure returns (uint256[] memory ids) {
-        uint256 n = b.length / 2;
-        ids = new uint256[](n);
-        for (uint256 i = 0; i < n; i++) {
-            ids[i] = (uint256(uint8(b[i * 2])) << 8) | uint8(b[i * 2 + 1]);
+    function _pad4(uint256 v) internal pure returns (string memory) {
+        bytes memory s = new bytes(4);
+        for (uint256 i = 0; i < 4; i++) {
+            s[3 - i] = bytes1(uint8(48 + (v % 10)));
+            v /= 10;
         }
-    }
-
-    function _slice(bytes memory d, uint256 s, uint256 e) internal pure returns (bytes memory o) {
-        o = new bytes(e - s);
-        for (uint256 i = 0; i < o.length; i++) o[i] = d[s + i];
+        return string(s);
     }
 }

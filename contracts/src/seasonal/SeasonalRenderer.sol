@@ -4,18 +4,23 @@ pragma solidity ^0.8.24;
 import {SeasonalStorage} from "./SeasonalStorage.sol";
 import {Base64} from "../lib/Base64.sol";
 
-/// @notice Fully on-chain renderer for a seasonal tiny dinos collection.
-/// Each token is one stored 16x16 sprite (no compositing). metadataJSON(id)
-/// returns raw JSON with an inline base64 SVG image (web3:// target).
+/// @notice Fully on-chain renderer for a seasonal tiny dinos collection (ids
+/// 1..count). Each token is one stored 16x16 sprite + its attributes, packed in a
+/// combined record. metadataJSON(id) returns raw JSON with an inline base64 SVG
+/// image (the web3:// target). Reads only the one ~24KB chunk holding the token.
 contract SeasonalRenderer {
     SeasonalStorage public immutable store;
-    string public name;        // e.g. "tiny dinos: summer 2022"
+    uint256 public immutable count;
+    uint256 public immutable locPerChunk;
+    string public name;
     string public description;
 
     bytes16 internal constant HEX = "0123456789abcdef";
 
     constructor(SeasonalStorage _store, string memory _name, string memory _desc) {
         store = _store;
+        count = _store.count();
+        locPerChunk = _store.locPerChunk();
         name = _name;
         description = _desc;
     }
@@ -27,7 +32,7 @@ contract SeasonalRenderer {
     }
 
     function metadataJSON(uint256 id) public view returns (string memory) {
-        uint256 idx = _idxOf(id);
+        (bytes memory data, uint256 off) = _record(id);
         string memory image = string.concat(
             "data:image/svg+xml;base64,", Base64.encode(bytes(imageSVG(id)))
         );
@@ -35,16 +40,18 @@ contract SeasonalRenderer {
             '{"name":"', name, " #", _utoa(id),
             '","description":"', description,
             '","tokenId":', _utoa(id),
-            ',"attributes":[', _attributes(idx),
+            ',"attributes":[', _attributes(data, off),
             '],"image":"', image, '"}'
         );
     }
 
     function imageSVG(uint256 id) public view returns (string memory) {
-        uint256 idx = _idxOf(id);
-        uint32[256] memory grid = _sprite(store.sprites(), _spriteOffset(store.offsets(), idx));
+        (bytes memory data, uint256 off) = _record(id);
+        uint256 n = uint8(data[off]); // skip attrs to reach the sprite
+        uint32[256] memory grid = _sprite(data, off + 1 + 3 * n);
+
         bytes memory buf = new bytes(24000);
-        uint256 n = _append(
+        uint256 m = _append(
             buf, 0,
             bytes("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'>")
         );
@@ -54,45 +61,35 @@ contract SeasonalRenderer {
                 uint32 c = grid[y * 16 + x];
                 uint256 x2 = x;
                 while (x2 < 16 && grid[y * 16 + x2] == c) x2++;
-                n = _append(buf, n, _rect(x, y, x2 - x, c));
+                m = _append(buf, m, _rect(x, y, x2 - x, c));
                 x = x2;
             }
         }
-        n = _append(buf, n, bytes("</svg>"));
-        assembly { mstore(buf, n) }
+        m = _append(buf, m, bytes("</svg>"));
+        assembly { mstore(buf, m) }
         return string(buf);
     }
 
-    // ---- lookup ----
+    // ---- record lookup ----
 
-    function _idxOf(uint256 id) internal view returns (uint256) {
-        bytes memory ids = store.ids();
-        uint256 n = ids.length / 2;
-        uint256 lo = 0;
-        uint256 hi = n;
-        while (lo < hi) {
-            uint256 mid = (lo + hi) / 2;
-            uint256 v = (uint256(uint8(ids[mid * 2])) << 8) | uint8(ids[mid * 2 + 1]);
-            if (v == id) return mid;
-            if (v < id) lo = mid + 1;
-            else hi = mid;
-        }
-        revert("unknown token");
+    function _record(uint256 id) internal view returns (bytes memory data, uint256 off) {
+        require(id >= 1 && id <= count, "unknown token");
+        uint256 idx = id - 1;
+        bytes memory loc = store.locChunk(idx / locPerChunk);
+        uint256 p = (idx % locPerChunk) * 4;
+        uint256 chunkIdx = (uint256(uint8(loc[p])) << 8) | uint8(loc[p + 1]);
+        off = (uint256(uint8(loc[p + 2])) << 8) | uint8(loc[p + 3]);
+        data = store.dataChunk(chunkIdx);
     }
 
-    // ---- attributes ----
-
-    function _attributes(uint256 idx) internal view returns (string memory out) {
-        bytes memory rec = store.records();
-        bytes memory recOff = store.recOffsets();
+    function _attributes(bytes memory data, uint256 off) internal view returns (string memory out) {
         bytes memory cats = store.cats();
         bytes memory vals = store.vals();
-        uint256 o = _u32(recOff, idx);
-        uint256 num = uint8(rec[o]);
-        o += 1;
+        uint256 num = uint8(data[off]);
+        uint256 o = off + 1;
         for (uint256 i = 0; i < num; i++) {
-            uint256 ci = uint8(rec[o]);
-            uint256 vi = (uint256(uint8(rec[o + 1])) << 8) | uint8(rec[o + 2]);
+            uint256 ci = uint8(data[o]);
+            uint256 vi = (uint256(uint8(data[o + 1])) << 8) | uint8(data[o + 2]);
             o += 3;
             out = string.concat(
                 out, i == 0 ? "" : ",",
@@ -102,16 +99,6 @@ contract SeasonalRenderer {
     }
 
     // ---- sprite decode (RLE) ----
-
-    function _spriteOffset(bytes memory offs, uint256 idx) internal pure returns (uint256) {
-        return _u32(offs, idx);
-    }
-
-    function _u32(bytes memory b, uint256 i) internal pure returns (uint256) {
-        uint256 p = i * 4;
-        return (uint256(uint8(b[p])) << 24) | (uint256(uint8(b[p + 1])) << 16)
-            | (uint256(uint8(b[p + 2])) << 8) | uint256(uint8(b[p + 3]));
-    }
 
     function _sprite(bytes memory blob, uint256 o) internal pure returns (uint32[256] memory px) {
         uint256 plen = uint8(blob[o]);
@@ -125,10 +112,10 @@ contract SeasonalRenderer {
         }
         uint256 filled = 0;
         while (filled < 256) {
-            uint256 count = uint8(blob[o]);
+            uint256 cnt = uint8(blob[o]);
             uint32 color = pal[uint8(blob[o + 1])];
             o += 2;
-            for (uint256 k = 0; k < count; k++) px[filled++] = color;
+            for (uint256 k = 0; k < cnt; k++) px[filled++] = color;
         }
     }
 

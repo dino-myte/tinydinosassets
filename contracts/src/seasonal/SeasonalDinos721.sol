@@ -44,6 +44,16 @@ contract SeasonalDinos721 {
         _balances[owner] += ids.length;
     }
 
+    /// @dev Mint a contiguous run [from, from+qty) to the owner.
+    function mintRange(uint256 from, uint256 qty) external onlyOwner {
+        for (uint256 id = from; id < from + qty; id++) {
+            require(_owners[id] == address(0), "exists");
+            _owners[id] = owner;
+            emit Transfer(address(0), owner, id);
+        }
+        _balances[owner] += qty;
+    }
+
     function tokenURI(uint256 id) external view returns (string memory) {
         require(_owners[id] != address(0), "nonexistent");
         return bytes(_base).length == 0 ? "" : string.concat(_base, _toString(id));

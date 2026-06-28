@@ -105,50 +105,80 @@ def main():
                 val_idx[v] = len(vals); vals.append(v)
             return val_idx[v]
 
-        sprites = bytearray(); sp_off = [0]
-        records = bytearray(); rec_off = [0]
-        ids = []
+        # Combined per-token record = [numAttrs u8][catIdx u8, valIdx u16-BE]*n
+        # [sprite RLE]. Requires contiguous ids 1..N (the full set), so the
+        # renderer maps id -> idx = id-1 (no id blob / binary search).
+        ids = [t["id"] for t in tokens]
+        assert ids == list(range(1, len(ids) + 1)), "seasonal full set must be ids 1..N"
+        recs = []  # per-token combined bytes
         for t in tokens:
-            tid = t["id"]; ids.append(tid)
-            sprites += encode_sprite(image16(tid)); sp_off.append(len(sprites))
+            r = bytearray()
             order = attr_order(t["attrs"])
-            records.append(len(order))
+            r.append(len(order))
             for c in order:
-                records.append(cat_id(c))
-                records += struct.pack(">H", val_id(t["attrs"][c]))
-            rec_off.append(len(records))
-
+                r.append(cat_id(c))
+                r += struct.pack(">H", val_id(t["attrs"][c]))
+            r += encode_sprite(image16(t["id"]))
+            recs.append(bytes(r))
         assert max(val_idx.values(), default=0) < 65536
         assert max(cat_idx.values(), default=0) < 256
-        assert ids == sorted(ids)
+
+        # Chunk the combined records at token boundaries (<=24000B/chunk).
+        DATA_MAX = 24000
+        dchunks = []
+        loc = []  # per token (dataChunkIdx u16, localOffset u16)
+        cur = bytearray()
+        for r in recs:
+            assert len(r) <= DATA_MAX
+            if cur and len(cur) + len(r) > DATA_MAX:
+                dchunks.append(bytes(cur)); cur = bytearray()
+            loc.append((len(dchunks), len(cur)))
+            cur += r
+        if cur:
+            dchunks.append(bytes(cur))
+
+        # Location index, fixed LOC_PER_CHUNK tokens (4 bytes each) per chunk.
+        LOC_PER_CHUNK = 6000
+        lchunks = []
+        for i in range(0, len(loc), LOC_PER_CHUNK):
+            b = bytearray()
+            for ci, lo in loc[i:i + LOC_PER_CHUNK]:
+                assert ci < 65536 and lo < 65536
+                b += struct.pack(">HH", ci, lo)
+            lchunks.append(bytes(b))
 
         odir = os.path.join(OUT, name)
         os.makedirs(odir, exist_ok=True)
-        open(os.path.join(odir, "sprites.bin"), "wb").write(sprites)
-        with open(os.path.join(odir, "spriteOffsets.bin"), "wb") as f:
-            for o in sp_off: f.write(struct.pack(">I", o))
-        with open(os.path.join(odir, "ids.bin"), "wb") as f:
-            for i in ids: f.write(struct.pack(">H", i))
-        open(os.path.join(odir, "records.bin"), "wb").write(records)
-        with open(os.path.join(odir, "recordOffsets.bin"), "wb") as f:
-            for o in rec_off: f.write(struct.pack(">I", o))
+        for sub in ("data", "loc"):
+            d = os.path.join(odir, sub); os.makedirs(d, exist_ok=True)
+            for fn in os.listdir(d):
+                os.remove(os.path.join(d, fn))
+        for i, c in enumerate(dchunks):
+            open(os.path.join(odir, "data", f"{i:04d}.bin"), "wb").write(c)
+        for i, c in enumerate(lchunks):
+            open(os.path.join(odir, "loc", f"{i:04d}.bin"), "wb").write(c)
         open(os.path.join(odir, "cats.txt"), "w").write("\n".join(cats))
         open(os.path.join(odir, "vals.txt"), "w").write("\n".join(vals))
 
-        # codec round-trip self-check
+        # round-trip self-check: decode the sprite out of each combined record
         for i in range(len(ids)):
-            decode_sprite(bytes(sprites), sp_off[i])
+            ci, lo = loc[i]
+            r = dchunks[ci]
+            n = r[lo]; off = lo + 1 + 3 * n
+            decode_sprite(r, off)
 
+        total = sum(len(c) for c in dchunks)
         manifest = {
             "name": name, "displayName": NAMES[name], "description": DESCS[name],
             "exact": EXACT[name], "count": len(ids),
             "nCats": len(cats), "nVals": len(vals),
-            "idRange": [ids[0], ids[-1]] if ids else None,
-            "sizes": {"sprites.bin": len(sprites), "records.bin": len(records)},
+            "nDataChunks": len(dchunks), "nLocChunks": len(lchunks),
+            "locPerChunk": LOC_PER_CHUNK, "dataBytes": total,
         }
         json.dump(manifest, open(os.path.join(odir, "manifest.json"), "w"), indent=2)
         print(f"{name}: {len(ids)} tokens, {len(cats)} cats, {len(vals)} vals, "
-              f"sprites {len(sprites):,}B, exact={EXACT[name]}")
+              f"data {total:,}B in {len(dchunks)} chunks, {len(lchunks)} loc chunks, "
+              f"exact={EXACT[name]}")
 
 
 if __name__ == "__main__":

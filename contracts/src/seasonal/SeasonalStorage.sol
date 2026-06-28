@@ -3,26 +3,26 @@ pragma solidity ^0.8.24;
 
 import {SSTORE2} from "../lib/SSTORE2.sol";
 
-/// @notice Immutable on-chain data for one seasonal tiny dinos collection.
+/// @notice Immutable on-chain data for one seasonal tiny dinos collection with a
+/// contiguous id range 1..count.
 ///
-/// Blobs (produced by build/seasons/encode.py):
-///   sprites      concatenated RLE sprites, one per token (chunked, <=24KB each)
-///   offsets      uint32-BE (N+1) offsets into the concatenated sprites
-///   ids          uint16-BE (N) real token ids, ascending (for lookup)
-///   records      per token: numAttrs(u8) then (catIdx u8, valIdx u16-BE) pairs
-///   recOffsets   uint32-BE (N+1) offsets into records
-///   cats / vals  '\n'-joined trait_type names / values
+/// Layout (produced by build/seasons/encode.py):
+///   dataChunks  combined per-token records, chunked at token boundaries (<=24KB):
+///               [numAttrs u8][catIdx u8, valIdx u16-BE]*n [sprite RLE]
+///   locChunks   location index, locPerChunk tokens/chunk, 4 bytes each:
+///               (dataChunkIdx u16-BE, localOffset u16-BE)
+///   cats / vals '\n'-joined trait_type names / values
+/// Token idx = id - 1. Everything is chunked so no blob exceeds the SSTORE2 limit.
 contract SeasonalStorage {
     address public owner;
     bool public frozen;
 
-    address[] public spriteChunks;
-    address public offsetsPtr;
-    address public idsPtr;
-    address public recordsPtr;
-    address public recOffsetsPtr;
+    address[] public dataChunks;
+    address[] public locChunks;
     address public catsPtr;
     address public valsPtr;
+    uint256 public count;
+    uint256 public locPerChunk;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
@@ -38,24 +38,22 @@ contract SeasonalStorage {
         owner = msg.sender;
     }
 
-    function addSpriteChunk(bytes calldata data) external onlyOwner notFrozen {
-        spriteChunks.push(SSTORE2.write(data));
+    function addDataChunk(bytes calldata d) external onlyOwner notFrozen {
+        dataChunks.push(SSTORE2.write(d));
     }
 
-    function setBlobs(
-        bytes calldata offsets_,
-        bytes calldata ids_,
-        bytes calldata records_,
-        bytes calldata recOffsets_,
-        bytes calldata cats_,
-        bytes calldata vals_
-    ) external onlyOwner notFrozen {
-        offsetsPtr = SSTORE2.write(offsets_);
-        idsPtr = SSTORE2.write(ids_);
-        recordsPtr = SSTORE2.write(records_);
-        recOffsetsPtr = SSTORE2.write(recOffsets_);
+    function addLocChunk(bytes calldata d) external onlyOwner notFrozen {
+        locChunks.push(SSTORE2.write(d));
+    }
+
+    function setStrings(bytes calldata cats_, bytes calldata vals_) external onlyOwner notFrozen {
         catsPtr = SSTORE2.write(cats_);
         valsPtr = SSTORE2.write(vals_);
+    }
+
+    function setMeta(uint256 count_, uint256 locPerChunk_) external onlyOwner notFrozen {
+        count = count_;
+        locPerChunk = locPerChunk_;
     }
 
     function seal() external onlyOwner notFrozen {
@@ -65,27 +63,12 @@ contract SeasonalStorage {
 
     // ---- reads ----
 
-    function sprites() external view returns (bytes memory out) {
-        uint256 n = spriteChunks.length;
-        for (uint256 i = 0; i < n; i++) {
-            out = bytes.concat(out, SSTORE2.read(spriteChunks[i]));
-        }
+    function dataChunk(uint256 i) external view returns (bytes memory) {
+        return SSTORE2.read(dataChunks[i]);
     }
 
-    function offsets() external view returns (bytes memory) {
-        return SSTORE2.read(offsetsPtr);
-    }
-
-    function ids() external view returns (bytes memory) {
-        return SSTORE2.read(idsPtr);
-    }
-
-    function records() external view returns (bytes memory) {
-        return SSTORE2.read(recordsPtr);
-    }
-
-    function recOffsets() external view returns (bytes memory) {
-        return SSTORE2.read(recOffsetsPtr);
+    function locChunk(uint256 i) external view returns (bytes memory) {
+        return SSTORE2.read(locChunks[i]);
     }
 
     function cats() external view returns (bytes memory) {
@@ -97,6 +80,6 @@ contract SeasonalStorage {
     }
 
     function totalTokens() external view returns (uint256) {
-        return SSTORE2.read(idsPtr).length / 2;
+        return count;
     }
 }
