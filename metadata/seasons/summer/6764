@@ -1,0 +1,44 @@
+{
+  "name": "tiny dinos: summer 2022 collection #6764",
+  "description": "one of 10k tiny dinos ready for summer vibes",
+  "tokenId": 6764,
+  "attributes": [
+    {
+      "trait_type": "background",
+      "value": "red to blue gradient"
+    },
+    {
+      "trait_type": "body",
+      "value": "light green"
+    },
+    {
+      "trait_type": "chest",
+      "value": "pink"
+    },
+    {
+      "trait_type": "eyes",
+      "value": "blue"
+    },
+    {
+      "trait_type": "face",
+      "value": "normal"
+    },
+    {
+      "trait_type": "feet",
+      "value": "surfboard"
+    },
+    {
+      "trait_type": "hands",
+      "value": "frizbee"
+    },
+    {
+      "trait_type": "head",
+      "value": "schooner hat"
+    },
+    {
+      "trait_type": "spikes",
+      "value": "dark gray"
+    }
+  ],
+  "image": "ipfs://QmbFVxGLk8zLfwpNyaGDrPdFMdNmvBtULtUWorsJ5BHPFT/6764.png"
+}

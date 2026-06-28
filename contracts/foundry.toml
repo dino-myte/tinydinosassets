@@ -16,6 +16,7 @@ block_gas_limit = "18446744073709551615"
 # Allow tests to read the build blobs and fixtures produced by build/*.py
 fs_permissions = [
     { access = "read", path = "../build/out" },
+    { access = "read", path = "../build/seasons/out" },
     { access = "read", path = "./test/fixtures" },
 ]
 

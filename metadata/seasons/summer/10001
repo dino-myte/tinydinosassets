@@ -1,0 +1,12 @@
+{
+  "name": "tiny dinos: summer 2022 collection #10001",
+  "description": "one of 10k tiny dinos ready for summer vibes",
+  "tokenId": 10001,
+  "attributes": [
+    {
+      "trait_type": "1/1",
+      "value": "bug"
+    }
+  ],
+  "image": "ipfs://QmbFVxGLk8zLfwpNyaGDrPdFMdNmvBtULtUWorsJ5BHPFT/10001.png"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "tiny dinos: summer 2022 collection #5892",
+  "description": "one of 10k tiny dinos ready for summer vibes",
+  "tokenId": 5892,
+  "attributes": [
+    {
+      "trait_type": "1/1",
+      "value": "smol birb"
+    }
+  ],
+  "image": "ipfs://QmbFVxGLk8zLfwpNyaGDrPdFMdNmvBtULtUWorsJ5BHPFT/5892.png"
+}
