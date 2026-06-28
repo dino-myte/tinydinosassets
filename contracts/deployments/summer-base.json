@@ -1,0 +1,17 @@
+{
+  "_comment": "PREVIEW deploy of tiny dinos: summer 2022 on Base (all 10,001), rendered fully on-chain via genesis-style composite + correction overlay (option B).",
+  "chain": "base",
+  "chainId": 8453,
+  "deployedAt": "2026-06-27",
+  "deployer": "0x16DfA1d0CDfd8c899009cA1a6343A36a6E8698D8",
+  "contracts": {
+    "SeasonalNFT721A": "0x8CbF79864b1066b159457ea833f5D90A646aF704",
+    "SeasonalRenderer": "0x1c327357b25793832f321eaa28Ce7C7a4167619B",
+    "SeasonalStorage": "0x5b26BEc34A5a591bd3707903eCB25e77029d86D7"
+  },
+  "baseURI": "web3://0x1c327357b25793832f321eaa28ce7c7a4167619b:8453/metadataJSON/",
+  "totalSupply": 10001,
+  "costEthApprox": 0.00072,
+  "openseaCollection": "https://opensea.io/collection/tiny-dinos-summer-2022-227662853",
+  "verified": "live render == source (16-grid) for composite + 1/1 tokens; ~92 shared sprites + ~11px/token corrections"
+}
