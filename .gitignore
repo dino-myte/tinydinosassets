@@ -15,3 +15,9 @@ build/seasons/out_b/
 build/seasons/manifests/
 
 # Kept in git: build/out/ (the ~72KB on-chain deploy blobs + manifest)
+
+# Rendered Hermes pet packs (~470MB, regenerable via build/pets/batch.py).
+# Generator code is kept in git; packs are published as a release artifact / IPFS / R2.
+build/pets/out/
+build/pets/dist/
+build/pets/deploy/

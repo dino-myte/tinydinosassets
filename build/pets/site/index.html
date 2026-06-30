@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tiny dinos → hermes pets</title>
+<style>
+  :root{
+    --ink:#13111c; --paper:#f4f1e8; --line:#13111c;
+    --dino:#5aa9e6; --dino2:#7b5ea7; --hot:#e8506b; --ok:#3ec46d;
+    --shadow:6px 6px 0 var(--line);
+  }
+  *{box-sizing:border-box}
+  html{image-rendering:pixelated}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    background-image:radial-gradient(var(--line) 1px,transparent 1px);
+    background-size:22px 22px; background-position:-11px -11px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+  header h1{font-size:30px;letter-spacing:-1px;margin:0 0 4px;line-height:1.05}
+  header p{margin:0;opacity:.7;font-size:14px}
+  .card{
+    background:#fff;border:3px solid var(--line);box-shadow:var(--shadow);
+    border-radius:4px;padding:18px;margin-top:22px;
+  }
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type=number]{
+    flex:1;min-width:140px;font:inherit;font-size:20px;padding:12px 14px;
+    border:3px solid var(--line);border-radius:4px;background:var(--paper);
+  }
+  button{
+    font:inherit;font-weight:700;font-size:15px;cursor:pointer;
+    padding:12px 16px;border:3px solid var(--line);border-radius:4px;
+    background:var(--dino);color:#fff;box-shadow:3px 3px 0 var(--line);
+    transition:transform .04s,box-shadow .04s;
+  }
+  button:active{transform:translate(3px,3px);box-shadow:none}
+  button.ghost{background:#fff;color:var(--ink)}
+  button.hot{background:var(--hot)}
+  .stage{
+    margin-top:18px;display:grid;grid-template-columns:208px 1fr;gap:18px;align-items:start;
+  }
+  @media(max-width:560px){.stage{grid-template-columns:1fr}}
+  .screen{
+    width:208px;height:226px;border:3px solid var(--line);border-radius:4px;
+    background:
+      conic-gradient(#e8e6df 25%,#fff 0 50%,#e8e6df 0 75%,#fff 0) 0 0/24px 24px;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .screen img{width:192px;height:208px;image-rendering:pixelated}
+  .meta h2{margin:0 0 2px;font-size:20px}
+  .kind{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;
+    border:2px solid var(--line);border-radius:99px;background:var(--dino2);color:#fff}
+  .kind.one{background:var(--hot)}
+  .traits{margin:10px 0 0;font-size:13px;opacity:.8;line-height:1.5}
+  .dl{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .dl a{font-size:13px;color:var(--ink);text-decoration:none;border-bottom:2px dotted}
+  .install{font-size:13px;line-height:1.6}
+  .install code,pre code{background:var(--paper);border:1px solid var(--line);
+    padding:1px 5px;border-radius:3px}
+  pre{background:var(--ink);color:#eee;padding:12px 14px;border-radius:4px;overflow:auto;
+    font-size:12.5px;line-height:1.5}
+  .muted{opacity:.6;font-size:12px;margin-top:26px;text-align:center}
+  .err{color:var(--hot);font-weight:700;margin-top:12px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>tiny dinos → hermes pets 🦖</h1>
+    <p>turn any of the 10,001 cc0 tiny dinos into an animated <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/pets" target="_blank" rel="noopener">Hermes / petdex pet</a>.</p>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <input id="tok" type="number" min="1" max="10001" placeholder="token # (1–10001)" value="33">
+      <button id="go">hatch →</button>
+      <button id="rng" class="ghost">random</button>
+    </div>
+    <div id="err" class="err hidden"></div>
+
+    <div id="result" class="stage hidden">
+      <div class="screen"><img id="preview" alt="pet preview"></div>
+      <div class="meta">
+        <h2 id="name">—</h2>
+        <span id="kind" class="kind">dino</span>
+        <p id="traits" class="traits"></p>
+        <div class="dl">
+          <button id="zip" class="hot" style="align-self:flex-start">⬇ download pack (.zip)</button>
+          <a id="d_sheet" href="#" download>spritesheet.webp (9 petdex states)</a>
+          <a id="d_game" href="#" download>spritesheet_game.webp (+ attack/hurt/death/sleep)</a>
+          <a id="d_pet" href="#" download>pet.json</a>
+          <a id="d_atlas" href="#" download>atlas.json (game engines)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card install">
+    <strong>install in Hermes / Codex</strong>
+    <ol style="margin:8px 0 0;padding-left:18px">
+      <li>download &amp; unzip the pack into your pets dir:
+        <pre><code>unzip tiny-dino-&lt;id&gt;.zip -d ~/.codex/pets/</code></pre>
+      </li>
+      <li>activate it: run <code>petdex select</code>, or in Codex/Hermes go
+        <em>Settings → Appearance → Pets → Select</em>, then <code>/pet</code> to wake it.</li>
+      <li>want it in the public gallery? <code>petdex submit ~/.codex/pets/tiny-dino-&lt;id&gt;</code></li>
+    </ol>
+    <p style="margin:10px 0 0;opacity:.7">sheet spec: 192×208 frames, 9×8 grid, 1536×1872 — fully petdex-conformant. The game sheet adds 4 engine-only rows + <code>atlas.json</code>.</p>
+  </div>
+
+  <p class="muted">cc0 · pixel-exact from the on-chain tiny dinos · rendered on demand</p>
+</div>
+
+<script>
+// CDN_BASE: leave "" to use the dynamic generator (server.py) on the same origin.
+// For static hosting (Cloudflare R2 + Pages), set it to your public assets base,
+// e.g. "https://pets.tinydinos.xyz" — the static export lays files out under /pets/.
+const CDN_BASE = "";
+const STATIC = CDN_BASE !== "";
+const $ = s => document.querySelector(s);
+function show(el,on){el.classList.toggle('hidden',!on)}
+
+function urls(id){
+  const slug = `tiny-dino-${id}`;
+  if(STATIC){
+    const b = `${CDN_BASE}/pets/${slug}`;
+    return {pet:`${b}/pet.json`, sheet:`${b}/spritesheet.webp`, game:`${b}/spritesheet_game.webp`,
+            atlas:`${b}/atlas.json`, preview:`${b}/preview.webp`, zip:`${b}/pet.zip`};
+  }
+  const b = `/api/pet/${id}`;
+  return {pet:`${b}/pet.json`, sheet:`${b}/spritesheet.webp`, game:`${b}/spritesheet_game.webp`,
+          atlas:`${b}/atlas.json`, preview:`${b}/preview.webp`, zip:`/api/pet/${id}.zip`};
+}
+
+async function load(id){
+  show($('#err'),false);
+  id = parseInt(id,10);
+  if(!(id>=1 && id<=10001)){ $('#err').textContent='enter a token between 1 and 10001'; show($('#err'),true); return; }
+  const u = urls(id);
+  try{
+    const pet = await (await fetch(u.pet)).json();
+    $('#name').textContent = pet.displayName;
+    const k = $('#kind'); k.textContent = pet.kind; k.classList.toggle('one',pet.kind==='1/1');
+    const m = pet.description.match(/\(([^)]+)\)/);
+    $('#traits').textContent = m ? m[1] : 'classic dino';
+    $('#preview').src = u.preview + (STATIC ? '' : `?t=${Date.now()}`);
+    $('#d_sheet').href = u.sheet;
+    $('#d_game').href  = u.game;
+    $('#d_pet').href   = u.pet;
+    $('#d_atlas').href = u.atlas;
+    $('#zip').onclick  = () => location.href = u.zip;
+    show($('#result'),true);
+  }catch(e){ $('#err').textContent='render failed: '+e.message; show($('#err'),true); }
+}
+$('#go').onclick  = () => load($('#tok').value);
+$('#rng').onclick = () => { const r=1+Math.floor(Math.random()*10001); $('#tok').value=r; load(r); };
+$('#tok').addEventListener('keydown', e=>{ if(e.key==='Enter') load($('#tok').value); });
+load($('#tok').value);
+</script>
+</body>
+</html>
