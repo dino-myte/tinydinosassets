@@ -1,0 +1,15 @@
+{
+  "name": "dinomyte-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "register": "tool-sdk register"
+  },
+  "dependencies": {
+    "@opensea/tool-sdk": "^0.25.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.105.0"
+  }
+}

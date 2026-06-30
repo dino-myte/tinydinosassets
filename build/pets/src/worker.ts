@@ -1,6 +1,8 @@
 // dinomyte.xyz Worker — single origin for the site, the pet assets, and the
 // (future) OpenSea agent tool. See ../wrangler.toml and ../HOSTING.md.
 
+import { SLUG, handleWellKnown, handleInvoke } from "./tool";
+
 interface R2Object {
   body: ReadableStream;
   httpEtag: string;
@@ -11,6 +13,8 @@ interface Env {
   ASSETS: { fetch(req: Request): Promise<Response> };
   PETS: { get(key: string): Promise<R2Object | null> };
   RATE_LIMITER?: RateLimiter;
+  TOOL_ID?: string;
+  ETH_RPC_URL?: string;
 }
 interface Ctx { waitUntil(p: Promise<unknown>): void }
 
@@ -69,13 +73,14 @@ export default {
       return res;
     }
 
-    // 2) OpenSea agent tool endpoint (ERC-8257) — wired up in agent-tool/.
-    //    Stubbed until the tool is registered (needs the gated handler + toolId).
+    // 2) OpenSea agent tool (ERC-8257), built on @opensea/tool-sdk (see ./tool.ts)
+    //    - GET /.well-known/ai-tool/<slug>.json : the tool manifest
+    //    - POST /api/pet : registry-gated invocation (ETH dinos ownership)
+    if (path === `/.well-known/ai-tool/${SLUG}.json`) {
+      return handleWellKnown(req);
+    }
     if (path === "/api/pet" && req.method === "POST") {
-      return Response.json(
-        { error: "not_implemented", hint: "agent tool not registered yet" },
-        { status: 501 },
-      );
+      return handleInvoke(req, env, ctx);
     }
 
     // 3) everything else (index.html, /.well-known/ai-tool/*, etc.) -> static assets

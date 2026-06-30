@@ -84,7 +84,7 @@ not the bytes.
 agent (Hermes/Claude/etc.)
    │  ERC-8257 discovery + x402 invoke
    ▼
-Cloudflare Worker  (same origin as the site, e.g. https://dinomyte.gg)
+Cloudflare Worker  (same origin as the site, e.g. https://dinomyte.xyz)
    ├─ GET /.well-known/ai-tool/tiny-dino-pet.json   (manifest)
    └─ POST /api/pet                                  (the tool endpoint)
         - predicateGate runs the registry's 402 challenge + native
@@ -102,29 +102,44 @@ Cloudflare Worker  (same origin as the site, e.g. https://dinomyte.gg)
   pet.json we'd template it in the Worker.)
 - This ties straight into the chosen **Cloudflare R2 + Pages/Workers** hosting.
 
-## 5. What it takes (concretely)
+## 5. Status — IMPLEMENTED & LIVE (registration pending)
 
-1. Decide gate model (token-specific vs any-holder) + CC0 framing (perk vs hard vs tip).
-2. A **Base wallet with a little ETH for gas** to `register` onchain (registration is
-   the only onchain action; holders pay no gas — they just sign off-chain).
-3. Scaffold: `npx @opensea/tool-sdk init tiny-dino-pet` → fill `manifest.ts`
-   (see `manifest.ts` sketch) + `handler.ts` (cross-chain gate, see sketches).
-4. Reliable **RPC endpoints for all 7 chains** (eth/arb/opt/poly common; avax/bnb/ftm
-   need a provider — public RPCs + a fallback list; or a multi-chain provider key).
-5. Deploy the Worker same-origin with the manifest; then register on **mainnet** with
-   the native gate:
-   `PRIVATE_KEY=… npx @opensea/tool-sdk register --metadata https://<origin>/.well-known/ai-tool/tiny-dino-pet.json --network mainnet --nft-gate 0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4`
-   (capture the assigned `toolId` → set as `TOOL_ID` for `predicateGate`).
-6. Verify: `opensea tools search "tiny dino"`, then the 402 invoke flow end-to-end.
+Built on the real **`@opensea/tool-sdk` v0.25** (no reinventing). Implementation lives in
+`build/pets/src/tool.ts` and is wired into the Worker (`src/worker.ts`):
+- `defineManifest` + `createWellKnownHandler` → serves the manifest at
+  **`https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json`** (live, `tool-sdk verify`
+  passes; hash `0x0429…95d9`).
+- `predicateGate` + `toCloudflareHandler` → **`POST /api/pet`** (registry-enforced gate).
+  Needs `compatibility_flags = ["nodejs_compat"]` (SDK uses viem/keccak). Bundle is
+  ~234 KiB gzip — **fits the Workers free plan**.
+- `image`/`featuredImage` = `/icon-512.png` + `/banner-16x9.png` (mfer-dino brand art, live).
+- Until `TOOL_ID` is set, `/api/pet` returns `503 tool_not_registered` (graceful).
 
-**Effort:** ~1 focused day once a domain + Cloudflare are live; the fiddly part is
-robust 7-chain RPC ownership checks (caching + fallbacks).
+**Registry facts (verified on-chain):** `ToolRegistry` + `ERC721OwnerPredicate` are deployed
+on chains `[1, 8453, 360, 2741]` — including **Ethereum mainnet (1)** at
+`0x265B…2cf1` / `0xc872…8379`. So registering `--network mainnet` co-locates the predicate
+with the ETH dinos collection and reads ownership directly.
 
-## 6. Open decisions
-- Gate model: **token-specific** (provenance) vs any-holder (convenience)?
-- CC0 framing: **holder perk** vs hard-gate vs free-for-holders + tip?
-- Output: return **R2 URLs** vs stream the installable zip vs a personalized pet.json?
-- Register now (needs a funded Base wallet) or after the site/domain is live?
+### To go live (needs a funded **Ethereum mainnet** wallet for gas — one-time):
+```bash
+cd build/pets
+# 1. register on mainnet, gate by the ETH dinos collection -> prints the toolId
+PRIVATE_KEY=0x<owner-key> RPC_URL=https://ethereum-rpc.publicnode.com \
+  npx tool-sdk register \
+  --metadata https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json \
+  --network mainnet \
+  --nft-gate 0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4
+# 2. wire the assigned id into the Worker, then redeploy
+npx wrangler secret put TOOL_ID      # paste the toolId
+npx wrangler deploy
+# 3. confirm discovery + the 402 gate flow
+npx tool-sdk verify https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json
+```
+(`--dry-run` on `register` prints the plan without transacting. Gas is the only cost;
+holders pay nothing — they sign a free zero-value authorization.)
 
-Sketches in this folder (`manifest.ts`, `handler.ts`, `ownership.ts`) are a runnable
-starting point, not deployed.
+## 6. Open / optional later
+- **Token-specific** gating (own #X to mint #X's pet) — the stock owner-predicate is
+  collection-level; would need a custom predicate or in-handler `ownerOf` check.
+- **Personalized `pet.json`** (owner address / custom name) templated in the handler.
+- **x402 tip** for non-holders (`x402Gate` + `x402UsdcPricing`) if you ever want revenue.

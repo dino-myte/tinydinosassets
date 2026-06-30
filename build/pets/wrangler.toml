@@ -8,6 +8,8 @@
 name = "dinomyte"
 main = "src/worker.ts"
 compatibility_date = "2026-06-01"
+# the agent-tool SDK (viem/keccak, canonicalize) uses Node APIs
+compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "./site"
@@ -22,6 +24,13 @@ run_worker_first = true
 [[r2_buckets]]
 binding = "PETS"
 bucket_name = "tinydinos-pets"
+
+[vars]
+# mainnet RPC for the agent-tool gate (predicateGate registry read). Override with a
+# dedicated endpoint if the public one rate-limits.
+ETH_RPC_URL = "https://ethereum-rpc.publicnode.com"
+# TOOL_ID is set AFTER `tool-sdk register` (npx wrangler secret put TOOL_ID, or here).
+# Until set, /api/pet returns 503 "tool_not_registered".
 
 # per-IP rate limiter (free, no storage). Applied only on cache MISS, so normal
 # cached browsing is never throttled — only scripted cache-miss storms get capped.
