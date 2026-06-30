@@ -21,3 +21,5 @@ build/seasons/manifests/
 build/pets/out/
 build/pets/dist/
 build/pets/deploy/
+build/pets/.wrangler/
+build/pets/node_modules/

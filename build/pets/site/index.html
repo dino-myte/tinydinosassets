@@ -116,10 +116,10 @@
 </div>
 
 <script>
-// CDN_BASE: leave "" to use the dynamic generator (server.py) on the same origin.
-// For static hosting (Cloudflare R2 + Pages), set it to your public assets base,
-// e.g. "https://pets.tinydinos.xyz" — the static export lays files out under /pets/.
-const CDN_BASE = "";
+// CDN_BASE: where the pet assets live (laid out under /pets/<slug>/...).
+// Single-Worker prod (dinomyte.xyz serves /pets/* from R2 on the same origin):
+const CDN_BASE = "https://dinomyte.xyz";
+// For local dev against the dynamic generator (server.py), set CDN_BASE = "".
 const STATIC = CDN_BASE !== "";
 const $ = s => document.querySelector(s);
 function show(el,on){el.classList.toggle('hidden',!on)}

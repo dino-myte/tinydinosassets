@@ -40,47 +40,47 @@ Size: ~2.1 GB with game sheets, ~1.4 GB with `--no-game`. On R2 that's ~$0.05/mo
 storage and **$0 egress**. (Encoding is lossless WebP — smallest *and* pixel-exact
 for this art; lossy is both bigger and noisier here.)
 
-## One-time setup
+## Topology (single Worker on dinomyte.xyz)
 
-1. **Create an R2 bucket** in the Cloudflare dashboard, e.g. `tinydinos-pets`.
-2. **Make it publicly reachable** — either enable the R2 "Public Development URL",
-   or (recommended) connect a **custom domain** like `pets.tinydinos.xyz`.
-3. **CORS** (R2 → bucket → Settings → CORS) so the Pages origin can fetch assets:
-   ```json
-   [{ "AllowedOrigins": ["*"], "AllowedMethods": ["GET"], "AllowedHeaders": ["*"] }]
-   ```
-4. **R2 API token** (R2 → Manage API Tokens) → use its key id/secret as
-   `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`.
+One Worker (`build/pets/wrangler.toml` + `src/worker.ts`) serves all three on one origin:
+- frontend `index.html` via the static-assets binding (`./site`),
+- `/pets/*` streamed from the **private** R2 bucket `tinydinos-pets` (no public URL, no CORS),
+- `/api/pet` + `/.well-known/ai-tool/*` for the future OpenSea agent tool.
 
-## Deploy
+The frontend's `CDN_BASE` is set to `https://dinomyte.xyz`, so it fetches `/pets/...` on
+the same origin. The R2 bucket stays private — only the Worker reads it.
+
+## Two credentials
+
+- **`wrangler login`** (OAuth) — for `wrangler r2 bucket create` and `wrangler deploy`.
+- **An R2 S3 API token** (R2 → Manage API Tokens → *Object Read & Write*) — for the bulk
+  asset upload, since there's no `wrangler` bulk-upload. Gives an Access Key ID + Secret +
+  your Account ID.
+
+## Deploy runbook
 
 ```bash
-# 1. render the static tree (once; re-run only if animations change)
-python build/pets/static_export.py            # or: --no-game to halve size
+# 0. (done) render the static tree
+python build/pets/static_export.py            # build/pets/deploy/ (~2.1 GB w/ game sheets)
 
-# 2. point the frontend at your public assets host
-#    edit build/pets/site/index.html -> set CDN_BASE, e.g.
-#    const CDN_BASE = "https://pets.tinydinos.xyz";
-#    then re-run static_export so deploy/index.html picks it up.
+# 1. auth for wrangler (run on your machine; OAuth stays local)
+wrangler login
 
-# 3. sync to R2 (S3-compatible; needs awscli)
+# 2. create the private bucket
+cd build/pets && npx wrangler r2 bucket create tinydinos-pets
+
+# 3. bulk-upload the ~60k asset files to R2 (needs the R2 S3 token)
 export R2_ACCOUNT_ID=...   R2_BUCKET=tinydinos-pets
-export AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...
-bash build/pets/deploy_r2.sh
+export AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...   # the R2 S3 token
+bash deploy_r2.sh
+
+# 4. deploy the Worker + bind the apex domain (zone already in your account)
+npx wrangler deploy
 ```
 
-`deploy_r2.sh` sets `cache-control: immutable` on `/pets/**` (safe — assets never
-change per token) and a short cache on `index.html` / `manifest.json`.
-
-## Frontend hosting (two options)
-
-- **Simplest:** serve `index.html` straight from the R2 bucket root (it's already
-  synced). Visit your public bucket URL.
-- **Recommended:** deploy the frontend on **Cloudflare Pages** for a clean apex
-  domain and instant cache invalidation:
-  - Pages project → upload `build/pets/deploy/index.html` (or point Pages at the
-    repo with build output dir `build/pets/deploy`).
-  - Keep `CDN_BASE` pointing at the R2 assets host.
+After step 4, `https://dinomyte.xyz` serves the site and streams every pet from R2.
+`deploy_r2.sh` sets `cache-control: immutable` on `/pets/**` (safe — per-token assets
+never change) and is resumable (re-run to finish a partial upload).
 
 ## Optional: IPFS permanence
 

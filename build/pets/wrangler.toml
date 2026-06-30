@@ -1,0 +1,26 @@
+# Single Cloudflare Worker for dinomyte.xyz:
+#   - serves the frontend (static-assets binding, ./site)
+#   - streams /pets/* from the PRIVATE R2 bucket (no public bucket, no CORS)
+#   - hosts the future OpenSea agent-tool routes (/api/pet, /.well-known/ai-tool/*)
+#     on the SAME origin (ERC-8257 requirement)
+#
+# Deploy:  cd build/pets && npx wrangler deploy
+name = "dinomyte"
+main = "src/worker.ts"
+compatibility_date = "2026-06-01"
+
+[assets]
+directory = "./site"
+binding = "ASSETS"
+# these paths must hit the Worker (R2 streaming + dynamic), not the static layer
+run_worker_first = ["/api/*", "/pets/*"]
+
+# private R2 bucket, streamed by the Worker (bucket stays private; no public URL)
+[[r2_buckets]]
+binding = "PETS"
+bucket_name = "tinydinos-pets"
+
+# bind the apex domain (zone already in this Cloudflare account)
+[[routes]]
+pattern = "dinomyte.xyz"
+custom_domain = true
