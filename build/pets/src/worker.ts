@@ -6,9 +6,11 @@ interface R2Object {
   httpEtag: string;
   writeHttpMetadata(headers: Headers): void;
 }
+interface RateLimiter { limit(o: { key: string }): Promise<{ success: boolean }> }
 interface Env {
   ASSETS: { fetch(req: Request): Promise<Response> };
   PETS: { get(key: string): Promise<R2Object | null> };
+  RATE_LIMITER?: RateLimiter;
 }
 interface Ctx { waitUntil(p: Promise<unknown>): void }
 
@@ -26,6 +28,18 @@ export default {
       const cache = (globalThis as { caches: { default: Cache } }).caches.default;
       const hit = await cache.match(req);
       if (hit) return hit;
+
+      // Cache miss = the only path that hits R2. Rate-limit it per IP so a scripted
+      // miss-storm can't run up ops; cached/normal browsing above is never throttled.
+      if (env.RATE_LIMITER) {
+        const ip = req.headers.get("cf-connecting-ip") ?? "anon";
+        const { success } = await env.RATE_LIMITER.limit({ key: ip });
+        if (!success) {
+          return new Response("slow down", {
+            status: 429, headers: { "retry-after": "10" },
+          });
+        }
+      }
 
       const key = decodeURIComponent(path.slice(1)); // drop leading "/"
       const obj = await env.PETS.get(key);
