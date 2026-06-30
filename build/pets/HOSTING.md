@@ -1,8 +1,20 @@
 # Hosting the tiny dinos → Hermes pet site
 
 The collection is fixed and every dino renders deterministically, so production is
-**fully static** — no server to run. We host immutable assets on **Cloudflare R2**
-and the frontend on **Cloudflare Pages** (both free-tier at this scale).
+**fully static** — no server to run. Immutable assets live on **Cloudflare R2**.
+
+> **Architecture note (important):** the asset tree is ~60k files. **Cloudflare Pages
+> can't hold it** (Free 20k-file cap, 100k on paid), so **assets must live on R2, not
+> Pages.** The cleanest topology is a **single Cloudflare Worker on the apex domain**
+> that (a) serves the tiny frontend via a static-assets binding, (b) streams `/pets/*`
+> from a *private* R2 binding (no public bucket, no CORS), and (c) hosts the future
+> agent-tool routes `/api/pet` + `/.well-known/ai-tool/*` on the same origin. This
+> unifies the site, the assets, and the OpenSea agent tool behind one origin.
+> Plain "R2 public bucket + Pages frontend" also works but needs a public bucket +
+> CORS and splits origins. See the Worker sketch below.
+>
+> Free tier easily covers this: 1.7 GB ≪ 10 GB storage, ~60k upload PUTs ≪ 1M Class A
+> ops/mo, **egress free**. One-time upload cost ≈ $0.
 
 `server.py` is still handy for local dev / on-demand rendering, but isn't needed in
 prod.
