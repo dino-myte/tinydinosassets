@@ -47,6 +47,21 @@ export const manifest = defineManifest({
   // MUST be lowercase and match the `creator` recorded onchain at registerTool — i.e.
   // the registering wallet. We register with the Bankr wallet, so use its address.
   creatorAddress: "0x688db40f817541abec62dc9035946d2397a79657",
+  // Declares the gating so agents/OpenSea can discover the requirement + link the
+  // collection (kind 0xbdf8c428 = ERC721OwnerPredicate; data = the ETH dinos address).
+  access: {
+    logic: "OR",
+    requirements: [
+      {
+        kind: "0xbdf8c428",
+        data: "0x000000000000000000000000d9b78a2f1dafc8bb9c60961790d2beefebee56f4",
+        label: "Hold any tiny dino (Ethereum collection)",
+        links: {
+          opensea: "https://opensea.io/assets/ethereum/0xd9b78A2F1dAFc8Bb9c60961790d2beefEBEE56f4",
+        },
+      },
+    ],
+  },
 });
 
 export const SLUG = deriveSlug(manifest.name); // "tiny-dino-pet"
