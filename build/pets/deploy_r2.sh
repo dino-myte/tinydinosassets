@@ -16,8 +16,12 @@ set -euo pipefail
 
 : "${R2_ACCOUNT_ID:?set R2_ACCOUNT_ID}"
 : "${R2_BUCKET:?set R2_BUCKET}"
-: "${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}"
-: "${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}"
+# Credentials: either set AWS_ACCESS_KEY_ID/SECRET, or an AWS_PROFILE you stored with
+# `aws configure --profile r2` (keeps the secret in ~/.aws/credentials, not the shell).
+if [ -z "${AWS_PROFILE:-}" ]; then
+  : "${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID (or AWS_PROFILE)}"
+  : "${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY (or AWS_PROFILE)}"
+fi
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SRC="$ROOT/build/pets/deploy"
