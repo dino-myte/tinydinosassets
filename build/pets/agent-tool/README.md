@@ -120,23 +120,53 @@ on chains `[1, 8453, 360, 2741]` — including **Ethereum mainnet (1)** at
 `0x265B…2cf1` / `0xc872…8379`. So registering `--network mainnet` co-locates the predicate
 with the ETH dinos collection and reads ownership directly.
 
-### To go live (needs a funded **Ethereum mainnet** wallet for gas — one-time):
+### To go live (one-time, needs a funded **Ethereum mainnet** wallet for gas)
+
+The SDK supports several wallet providers (`privy`, `turnkey`, `fireblocks`, `bankr`,
+`private-key`); `createWalletFromEnv()` auto-selects by which env vars are set. The
+wallet is used ONLY for `register` / `update-metadata` — the deployed tool's runtime
+(`predicateGate`) does read-only calls and needs no wallet.
+
+**Option A — Bankr managed wallet (chosen; no private key on disk).**
+`api.bankr.bot`, auth `X-API-Key: $BANKR_API_KEY`, signs/submits via `/wallet/sign`
++ `/wallet/submit`. Setup at `bankr.bot/api-keys`:
+1. Create an API key with the **Wallet API** capability enabled.
+2. Turn on the **IP allowlist** and add the public IP of the machine that runs
+   `register` (this Mac = `108.64.14.41`). Optionally set low wallet spend caps — it
+   only needs gas.
+3. Get the wallet address (`curl https://api.bankr.bot/wallet/me -H "X-API-Key: $BANKR_API_KEY"`)
+   and **fund it with a little ETH on mainnet** for the one registration tx.
 ```bash
 cd build/pets
-# 1. register on mainnet, gate by the ETH dinos collection -> prints the toolId
-PRIVATE_KEY=0x<owner-key> RPC_URL=https://ethereum-rpc.publicnode.com \
-  npx tool-sdk register \
-  --metadata https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json \
-  --network mainnet \
-  --nft-gate 0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4
-# 2. wire the assigned id into the Worker, then redeploy
-npx wrangler secret put TOOL_ID      # paste the toolId
-npx wrangler deploy
-# 3. confirm discovery + the 402 gate flow
+export BANKR_API_KEY=...           # Wallet-API key (keep out of shared transcripts)
+# dry-run first (validates key + IP allowlist + prints plan; no tx):
+npx tool-sdk register --metadata https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json \
+  --network mainnet --nft-gate 0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4 --dry-run
+# real run (Bankr broadcasts the tx; costs gas) -> prints the toolId:
+npx tool-sdk register --metadata https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json \
+  --network mainnet --nft-gate 0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4
+```
+
+**Option B — raw private key (fallback).**
+```bash
+PRIVATE_KEY=0x<key> RPC_URL=https://ethereum-rpc.publicnode.com \
+  npx tool-sdk register --metadata https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json \
+  --network mainnet --nft-gate 0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4
+```
+
+**After registration (either option):**
+```bash
+npx wrangler secret put TOOL_ID      # paste the toolId it printed
+npx wrangler deploy                  # /api/pet flips 503 -> live 402-gated
 npx tool-sdk verify https://dinomyte.xyz/.well-known/ai-tool/tiny-dino-pet.json
 ```
-(`--dry-run` on `register` prints the plan without transacting. Gas is the only cost;
-holders pay nothing — they sign a free zero-value authorization.)
+Gas is the only cost; holders pay nothing (they sign a free zero-value authorization).
+
+**Bankr IP-allowlist caveats:** the allowlisted IP must be the egress IP that reaches
+`api.bankr.bot` from wherever `register` runs. Residential IPv4 can change on an ISP
+lease renewal; this Mac also has IPv6 (privacy addresses rotate), so force IPv4 when
+calling Bankr (or allowlist the `/64` prefix if Bankr accepts CIDR). Bankr Club
+(~$20/mo in BNKR) or Max Mode is a prerequisite to use the account.
 
 ## 6. Open / optional later
 - **Token-specific** gating (own #X to mint #X's pet) — the stock owner-predicate is
