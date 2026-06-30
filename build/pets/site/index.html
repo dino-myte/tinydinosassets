@@ -73,6 +73,15 @@
   .muted{opacity:.6;font-size:12px;margin-top:26px;text-align:center}
   .err{color:var(--hot);font-weight:700;margin-top:12px}
   .hidden{display:none}
+  /* all-animations grid, driven straight from the sprite sheet via CSS steps() */
+  .anims{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:16px}
+  .acell{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .ascreen{width:120px;height:130px;border:3px solid var(--line);border-radius:4px;
+    overflow:hidden;box-shadow:3px 3px 0 var(--line);
+    background:conic-gradient(#e8e6df 25%,#fff 0 50%,#e8e6df 0 75%,#fff 0) 0 0/16px 16px}
+  .anim{image-rendering:pixelated;background-repeat:no-repeat}
+  .alabel{font-size:12px;font-weight:700;letter-spacing:.02em}
+  @keyframes sheetplay{from{background-position:0 var(--y)}to{background-position:var(--end) var(--y)}}
 </style>
 </head>
 <body>
@@ -105,6 +114,12 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="animsCard" class="card hidden">
+    <strong style="display:block;margin-bottom:14px">all animations
+      <span style="opacity:.55;font-weight:400">— looping live from the sprite sheet</span></strong>
+    <div id="anims" class="anims"></div>
   </div>
 
   <div class="card install">
@@ -162,7 +177,39 @@ async function load(id){
     $('#d_atlas').href = u.atlas;
     $('#zip').onclick  = () => location.href = u.zip;
     show($('#result'),true);
+    buildAnims(u);
   }catch(e){ $('#err').textContent='render failed: '+e.message; show($('#err'),true); }
+}
+
+// Render every state animated, sliced live from the game sprite sheet via CSS steps().
+const FRAME_W = 192, FRAME_H = 208, SHEET_W = 1536, GRID_K = 0.625;
+function animEl(st, sheetUrl, k){
+  const el = document.createElement('div');
+  el.className = 'anim';
+  el.style.width = (FRAME_W*k)+'px';
+  el.style.height = (FRAME_H*k)+'px';
+  el.style.backgroundImage = `url("${sheetUrl}")`;
+  el.style.backgroundSize = `${SHEET_W*k}px auto`;
+  el.style.setProperty('--y', `${-(st.row*FRAME_H*k)}px`);
+  el.style.setProperty('--end', `${-(st.frames*FRAME_W*k)}px`);
+  el.style.backgroundPosition = `0 ${-(st.row*FRAME_H*k)}px`;
+  el.style.animation = `sheetplay ${st.durationMs}ms steps(${st.frames}) infinite`;
+  return el;
+}
+async function buildAnims(u){
+  try{
+    const atlas = await (await fetch(u.atlas)).json();
+    const wrap = $('#anims'); wrap.innerHTML = '';
+    for(const st of atlas.states){
+      const cell = document.createElement('div'); cell.className = 'acell';
+      const screen = document.createElement('div'); screen.className = 'ascreen';
+      screen.appendChild(animEl(st, u.game, GRID_K));
+      const label = document.createElement('div'); label.className = 'alabel'; label.textContent = st.id;
+      cell.append(screen, label);
+      wrap.appendChild(cell);
+    }
+    show($('#animsCard'), true);
+  }catch(e){ show($('#animsCard'), false); }
 }
 $('#go').onclick  = () => load($('#tok').value);
 $('#rng').onclick = () => { const r=1+Math.floor(Math.random()*10001); $('#tok').value=r; load(r); };
