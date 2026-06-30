@@ -40,6 +40,24 @@ Size: ~2.1 GB with game sheets, ~1.4 GB with `--no-game`. On R2 that's ~$0.05/mo
 storage and **$0 egress**. (Encoding is lossless WebP — smallest *and* pixel-exact
 for this art; lossy is both bigger and noisier here.)
 
+## Cost & staying in the free tier
+
+R2 free tier: 10 GB storage, 1M Class A ops/mo (writes/lists), 10M Class B ops/mo
+(reads), **zero egress**. Our footprint:
+- **Storage 2.1 GB** — fixed at what we upload, never grows on its own (~21% of free).
+- **Class A ~60k** — basically just the one-time upload; re-syncs add ~60k each. <6%.
+- **Class B (reads)** — the only traffic-driven number. The Worker uses the **edge cache**
+  (Cache API + `immutable` headers), so each file is read from R2 **at most once per colo**
+  and then served from cache (free, not a Class B op). Repeat views cost zero R2 ops, so
+  this stays far under 10M except at extreme viral scale.
+
+Net: realistically **$0/mo**. Cloudflare has **no hard auto-shutoff spend cap** for R2, so
+the guardrails are: (1) the edge caching above, (2) the bucket is **private** (only the
+Worker reads it — no one can hammer R2 directly), (3) storage is small and fixed, and
+(4) set **billing/usage notifications** (dash → Manage Account → Notifications → add a
+Billing alert) to email you if usage ever climbs. Worst-case overage is cents
+($0.015/GB, $0.36/M reads).
+
 ## Topology (single Worker on dinomyte.xyz)
 
 One Worker (`build/pets/wrangler.toml` + `src/worker.ts`) serves all three on one origin:

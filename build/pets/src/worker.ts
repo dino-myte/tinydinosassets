@@ -10,17 +10,23 @@ interface Env {
   ASSETS: { fetch(req: Request): Promise<Response> };
   PETS: { get(key: string): Promise<R2Object | null> };
 }
+interface Ctx { waitUntil(p: Promise<unknown>): void }
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // 1) pet assets — stream from the private R2 bucket
-    //    e.g. /pets/tiny-dino-33/spritesheet.webp
+    // 1) pet assets — served from the edge cache; R2 is read at most ONCE per file
+    //    per colo, then cached (immutable). This keeps R2 Class B ops near zero
+    //    regardless of traffic (egress is free on R2).  e.g. /pets/tiny-dino-33/spritesheet.webp
     if (path.startsWith("/pets/")) {
+      const cache = (globalThis as { caches: { default: Cache } }).caches.default;
+      const hit = await cache.match(req);
+      if (hit) return hit;
+
       const key = decodeURIComponent(path.slice(1)); // drop leading "/"
       const obj = await env.PETS.get(key);
       if (!obj) return new Response("not found", { status: 404 });
@@ -29,7 +35,9 @@ export default {
       headers.set("etag", obj.httpEtag);
       headers.set("cache-control", IMMUTABLE);
       headers.set("access-control-allow-origin", "*");
-      return new Response(obj.body, { headers });
+      const res = new Response(obj.body, { headers });
+      if (req.method === "GET") ctx.waitUntil(cache.put(req, res.clone()));
+      return res;
     }
 
     // 2) OpenSea agent tool endpoint (ERC-8257) — wired up in agent-tool/.
