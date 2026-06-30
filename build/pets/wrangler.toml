@@ -12,8 +12,11 @@ compatibility_date = "2026-06-01"
 [assets]
 directory = "./site"
 binding = "ASSETS"
-# these paths must hit the Worker (R2 streaming + dynamic), not the static layer
-run_worker_first = ["/api/*", "/pets/*"]
+# Run the Worker first for every request: it streams /pets/* from R2, handles
+# /api/*, and 301s www -> apex on ALL paths (incl. "/"); everything else falls
+# through to env.ASSETS. Homepage/favicon volume is tiny, so the extra Worker
+# invocations are negligible against the free 100k/day.
+run_worker_first = true
 
 # private R2 bucket, streamed by the Worker (bucket stays private; no public URL)
 [[r2_buckets]]
@@ -31,4 +34,10 @@ simple = { limit = 500, period = 60 }
 # bind the apex domain (zone already in this Cloudflare account)
 [[routes]]
 pattern = "dinomyte.xyz"
+custom_domain = true
+
+# bind www too (Cloudflare auto-creates its DNS record + cert); the Worker 301s
+# www -> apex so the apex stays the canonical host.
+[[routes]]
+pattern = "www.dinomyte.xyz"
 custom_domain = true

@@ -15,10 +15,21 @@ interface Env {
 interface Ctx { waitUntil(p: Promise<unknown>): void }
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
+const MIME: Record<string, string> = {
+  webp: "image/webp", json: "application/json", zip: "application/zip",
+  png: "image/png", gif: "image/gif",
+};
 
 export default {
   async fetch(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url);
+
+    // canonicalize: www.dinomyte.xyz -> dinomyte.xyz (301, preserve path + query)
+    if (url.hostname === "www.dinomyte.xyz") {
+      url.hostname = "dinomyte.xyz";
+      return Response.redirect(url.toString(), 301);
+    }
+
     const path = url.pathname;
 
     // 1) pet assets — served from the edge cache; R2 is read at most ONCE per file
@@ -45,7 +56,11 @@ export default {
       const obj = await env.PETS.get(key);
       if (!obj) return new Response("not found", { status: 404 });
       const headers = new Headers();
-      obj.writeHttpMetadata(headers); // content-type set at upload time
+      obj.writeHttpMetadata(headers); // content-type if R2 stored one at upload
+      if (!headers.has("content-type")) {
+        const ext = key.split(".").pop() ?? "";
+        headers.set("content-type", MIME[ext] ?? "application/octet-stream");
+      }
       headers.set("etag", obj.httpEtag);
       headers.set("cache-control", IMMUTABLE);
       headers.set("access-control-allow-origin", "*");
