@@ -4,7 +4,7 @@
 // with --nft-gate on the ETH tiny dinos collection, so the predicate reads ownership
 // directly. predicateGate runs the 402 challenge + registry staticcall before our
 // handler; the handler then just returns the (CC0) pet pack URLs from our R2 origin.
-import { defineManifest, createWellKnownHandler, predicateGate, deriveSlug } from "@opensea/tool-sdk";
+import { defineManifest, createWellKnownHandler, predicateGate, deriveSlug, TOOL_REGISTRY } from "@opensea/tool-sdk";
 import { toCloudflareHandler } from "@opensea/tool-sdk/cloudflare";
 import { mainnet } from "viem/chains";
 import { z } from "zod";
@@ -72,7 +72,7 @@ const outputSchema = z.object({
   gameSpritesheetUrl: z.string(), zipUrl: z.string(), installCmd: z.string(),
 });
 
-interface ToolEnv { TOOL_ID?: string; ETH_RPC_URL?: string }
+interface ToolEnv { TOOL_ID?: string; ETH_RPC_URL?: string; OPENSEA_API_KEY?: string }
 
 export function toolRegistered(env: ToolEnv): boolean {
   return !!env.TOOL_ID && env.TOOL_ID !== "0";
@@ -99,8 +99,17 @@ export function handleInvoke(
     chain: mainnet,
     rpcUrl: env.ETH_RPC_URL, // undefined -> SDK uses mainnet public RPC
   });
+  // Usage reporting to OpenSea's metrics endpoint — fire-and-forget per invocation.
+  // Active only once both the OpenSea API key and the onchain TOOL_ID are set.
+  const usageReporting = env.OPENSEA_API_KEY ? {
+    chainId: 1,
+    toolChainId: 1,
+    toolRegistryAddress: TOOL_REGISTRY.address,
+    toolOnchainId: Number(env.TOOL_ID),
+    apiKey: env.OPENSEA_API_KEY,
+  } : undefined;
   const tool = toCloudflareHandler({
-    manifest, inputSchema, outputSchema, gates: [gate],
+    manifest, inputSchema, outputSchema, gates: [gate], usageReporting,
     handler: async (input) => {
       const slug = `tiny-dino-${input.tokenId}`;
       const base = `${ORIGIN}/pets/${slug}`;
