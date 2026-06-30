@@ -44,7 +44,9 @@ export const manifest = defineManifest({
   image: `${ORIGIN}/icon-512.png`,
   featuredImage: `${ORIGIN}/banner-16x9.png`,
   tags: ["nft", "image", "ai"],
-  creatorAddress: "0xde7fce3a1cba4a705f299ce41d163017f165d666", // dinos owner
+  // MUST be lowercase and match the `creator` recorded onchain at registerTool — i.e.
+  // the registering wallet. We register with the Bankr wallet, so use its address.
+  creatorAddress: "0x688db40f817541abec62dc9035946d2397a79657",
 });
 
 export const SLUG = deriveSlug(manifest.name); // "tiny-dino-pet"
