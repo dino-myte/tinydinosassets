@@ -1,0 +1,23 @@
+{
+  "_comment": "PRODUCTION genesis renderer on Ethereum mainnet (chainId 1) — fully on-chain art + traits for the live tinydinos ERC-721 (0xd9b78a2f1dafc8bb9c60961790d2beefebee56f4). Deployed via the Bankr managed wallet using a DinoDeployer helper through the canonical CREATE2 proxy (Bankr cannot send raw creation txs). Storage sealed/ownerless; renderer has no owner by construction. NOT yet repointed: setBaseURI on the live 721 must be run by its owner (0xde7fce3a1cba4a705f299ce41d163017f165d666).",
+  "chain": "eth",
+  "chainId": 1,
+  "deployedAt": "2026-07-01",
+  "deployer": "0x688db40f817541abec62dc9035946d2397a79657",
+  "create2Salt": "keccak256('tinydinos-genesis-2')",
+  "contracts": {
+    "DinoDeployer": "0x5f130f6A90DCda75d264ab4E1F3b4a5956354D0D",
+    "DinoStorage": "0xD7DBb6B7687B3A714BF11788B6eC8e5370c8D617",
+    "DinoRenderer": "0xB375319914A50Ba59D6f18102f6789B3C0AE9c55"
+  },
+  "baseURI": "web3://0xb375319914a50ba59d6f18102f6789b3c0ae9c55:1/metadataJSON/",
+  "totalTokens": 10001,
+  "sealed": true,
+  "costEth": 0.002191,
+  "verified": "pre-seal: all 11 SSTORE2 blobs byte-identical to build/out (58,136 bytes). post-seal live: 9/9 sampled tokens (incl. 1600x1600 outliers, worst-case #8891, 1/1 #10001) svg+json hash-exact vs fixtures; 12/12 sampled traitRGBA exact; w3link gateway resolves worst-case in ~0.7s (HTTP 200, raw JSON).",
+  "abandoned": {
+    "_comment": "First attempt, unsealed and unreferenced (a token chunk was double-applied when a client-side timeout hid a landed tx). Harmless orphan.",
+    "DinoDeployer": "0x1782c94333A98C306CB16B2a85A699D1F2ea46d3",
+    "DinoStorage": "0x931CAbBfE8c8a6372A42AD796080bB3f30af16d3"
+  }
+}
