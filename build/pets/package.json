@@ -7,7 +7,7 @@
     "register": "tool-sdk register"
   },
   "dependencies": {
-    "@opensea/tool-sdk": "^0.25.0"
+    "@opensea/tool-sdk": "^0.26.0"
   },
   "devDependencies": {
     "wrangler": "^4.105.0"

@@ -72,7 +72,14 @@ const outputSchema = z.object({
   gameSpritesheetUrl: z.string(), zipUrl: z.string(), installCmd: z.string(),
 });
 
-interface ToolEnv { TOOL_ID?: string; ETH_RPC_URL?: string; OPENSEA_API_KEY?: string }
+interface ToolEnv {
+  TOOL_ID?: string; ETH_RPC_URL?: string; OPENSEA_API_KEY?: string; OPERATOR_ADDRESS?: string;
+}
+
+// Operator address for EIP-3009 domain binding (the `to` of the caller's zero-value
+// authorization). tool-sdk 0.26 requires it; the 402/EIP-3009 flow it enables is what
+// stashes ctx.callerAuthorization so usage reporting actually fires (SIWE did not).
+const OPERATOR = "0x688db40f817541abec62dc9035946d2397a79657"; // our Bankr wallet
 
 export function toolRegistered(env: ToolEnv): boolean {
   return !!env.TOOL_ID && env.TOOL_ID !== "0";
@@ -98,6 +105,7 @@ export function handleInvoke(
     toolId: BigInt(env.TOOL_ID as string),
     chain: mainnet,
     rpcUrl: env.ETH_RPC_URL, // undefined -> SDK uses mainnet public RPC
+    operatorAddress: (env.OPERATOR_ADDRESS ?? OPERATOR) as `0x${string}`,
   });
   // Usage reporting to OpenSea's metrics endpoint — fire-and-forget per invocation.
   // Active only once both the OpenSea API key and the onchain TOOL_ID are set.
