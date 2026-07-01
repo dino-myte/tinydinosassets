@@ -74,7 +74,8 @@ def load_layers(tok):
     """
     _, attrs = common.load_meta(tok)
     if common.is_unique(attrs):
-        return {"_flat": _strip_bg_like(common.load_original(tok).copy())}, True
+        # 1/1s get bespoke premium animation (see uniques.py); carry the token id.
+        return {"_flat": _strip_bg_like(common.load_original(tok).copy()), "_tok": tok}, True
     layers = {}
     for cat in LAYERS:
         v = attrs.get(cat)
@@ -176,6 +177,9 @@ def _render(p, *, tx=0.0, ty=0.0, sx=1.0, sy=1.0, rot=0.0, flip=False,
 
 # ---- per-state continuous motion --------------------------------------------
 def frames_for(state, layers):
+    if "_tok" in layers:                      # 1/1 -> premium bespoke path
+        import uniques
+        return uniques.frames_for(state, layers)
     p = prep(layers)
     n = NFRAMES[state]
     out = []
