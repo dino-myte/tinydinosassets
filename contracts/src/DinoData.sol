@@ -96,6 +96,7 @@ library DinoData {
             o[7] = 8;
             o[8] = 5;
         }
+        else revert("order"); // unreachable with sealed, verified data
     }
 
     function attrOrderIdx() internal pure returns (uint8[9] memory a) {

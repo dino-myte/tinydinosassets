@@ -33,6 +33,8 @@ def compile_all():
         "language": "Solidity", "sources": sources,
         "settings": {
             "viaIR": True, "optimizer": {"enabled": True, "runs": 200},
+            # same remappings as contracts/remappings.txt (erc721a lives on disk)
+            "remappings": ["forge-std/=lib/forge-std/src/", "erc721a/=lib/ERC721A/"],
             "outputSelection": {"*": {"*": ["abi", "evm.bytecode.object"]}},
         },
     }

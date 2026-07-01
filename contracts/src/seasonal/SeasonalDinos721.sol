@@ -107,10 +107,24 @@ contract SeasonalDinos721 {
 
     function safeTransferFrom(address from, address to, uint256 id) external {
         transferFrom(from, to, id);
+        _checkReceiver(from, to, id, "");
     }
 
-    function safeTransferFrom(address from, address to, uint256 id, bytes calldata) external {
+    function safeTransferFrom(address from, address to, uint256 id, bytes calldata data) external {
         transferFrom(from, to, id);
+        _checkReceiver(from, to, id, data);
+    }
+
+    /// @dev ERC-721: safe transfers to a contract must be acknowledged via
+    /// onERC721Received, else the token could be permanently stuck there.
+    function _checkReceiver(address from, address to, uint256 id, bytes memory data) private {
+        if (to.code.length == 0) return;
+        (bool ok, bytes memory ret) = to.call(
+            abi.encodeWithSelector(0x150b7a02, msg.sender, from, id, data)
+        );
+        require(
+            ok && ret.length >= 32 && bytes4(ret) == bytes4(0x150b7a02), "unsafe receiver"
+        );
     }
 
     function supportsInterface(bytes4 iid) external pure returns (bool) {

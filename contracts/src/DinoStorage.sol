@@ -79,6 +79,7 @@ contract DinoStorage {
 
     /// @dev Returns the 5-byte record for `tokenId` (1-indexed).
     function tokenRecord(uint256 tokenId) external view returns (bytes memory) {
+        require(tokenId != 0, "bad tokenId");
         uint256 idx = tokenId - 1;
         uint256 nChunks = tokenPtrs.length;
         uint256 prev = 0;

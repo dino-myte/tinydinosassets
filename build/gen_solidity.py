@@ -66,6 +66,7 @@ def main():
         for k, v in enumerate(idxs):
             lines.append(f"            o[{k}] = {v};")
         lines.append("        }")
+    lines.append('        else revert("order"); // unreachable with sealed, verified data')
     lines.append("    }")
     lines.append("")
 

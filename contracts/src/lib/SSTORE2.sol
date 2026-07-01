@@ -8,6 +8,7 @@ library SSTORE2 {
     /// @dev Writes `data` as the runtime code of a new contract, prefixed with a
     /// STOP byte (0x00) so the code can never be executed. Returns its address.
     function write(bytes memory data) internal returns (address pointer) {
+        require(data.length <= 24575, "SSTORE2: too large"); // EIP-170 minus STOP prefix
         bytes memory runtime = abi.encodePacked(hex"00", data);
         // creation code: returns `runtime` as the deployed code.
         //   0x60 size 0x80 0x60 0x0a 0x39 0x60 size 0x90 0x57 ... -> use a simple wrapper
