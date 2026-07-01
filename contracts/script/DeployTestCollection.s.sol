@@ -22,8 +22,6 @@ contract DeployTestCollection is Script {
     uint256 internal constant SUPPLY = 10001;    // 1..10000 + the bonus 1/1 "bug" (#10001)
 
     function run() external {
-        string memory chain = vm.envOr("CHAIN", string("eth"));
-
         bytes memory sprites = vm.readFileBinary("../build/out/sprites.bin");
         bytes memory offsets = vm.readFileBinary("../build/out/spriteOffsets.bin");
         bytes memory tokens = vm.readFileBinary("../build/out/tokens.bin");
@@ -42,7 +40,7 @@ contract DeployTestCollection is Script {
             store.addTokenChunk(_slice(tokens, off, end));
         }
         store.seal();
-        DinoRenderer renderer = new DinoRenderer(store, chain);
+        DinoRenderer renderer = new DinoRenderer(store);
 
         // 3. mint all 10,000 (batched) to the deployer
         for (uint256 minted = 0; minted < SUPPLY; minted += MINT_BATCH) {

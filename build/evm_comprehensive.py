@@ -59,7 +59,7 @@ def deploy_all():
     for off in range(0, len(tokens), 24000):
         store.functions.addTokenChunk(tokens[off:off + 24000]).transact(TX)
     store.functions.seal().transact(TX)
-    renderer = deploy(rd_abi, rd_bin, (store.address, "eth"))
+    renderer = deploy(rd_abi, rd_bin, (store.address,))
     return renderer, (rd_abi, rd_bin), store, deploy
 
 
@@ -139,17 +139,11 @@ def main():
         d_ck += 1
         if not (meta["name"] == src["name"] and meta["description"] == src["description"]
                 and meta["tokenId"] == src["tokenId"] and meta["attributes"] == src["attributes"]
-                and meta["current-chain"] == src["current-chain"]
+                and "current-chain" not in meta
                 and meta["image"].startswith("data:image/svg+xml;base64,")):
             d_bad += 1; fails += 1; print(f"  D tokenURI mismatch token {tok}")
-    print(f"D. tokenURI JSON (Solidity -> decode -> metadata/eth): {d_ck - d_bad}/{d_ck} exact")
-    pc_bad = 0
-    for chain in CHAINS:
-        r = deploy(rd_abi, rd_bin, (store.address, chain))
-        meta = json.loads(base64.b64decode(r.functions.tokenURI(1).call().split(",", 1)[1]))
-        if meta["current-chain"] != chain:
-            pc_bad += 1; fails += 1
-    print(f"   per-chain current-chain via tokenURI: {len(CHAINS) - pc_bad}/{len(CHAINS)} correct")
+    print(f"D. tokenURI JSON (Solidity -> decode -> metadata/eth attrs, no current-chain): "
+          f"{d_ck - d_bad}/{d_ck} exact")
 
     print("\n" + ("ALL SOLIDITY CHECKS PASSED" if fails == 0 else f"{fails} FAILURES"))
     sys.exit(0 if fails == 0 else 1)

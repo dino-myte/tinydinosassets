@@ -22,8 +22,6 @@ contract Deploy is Script {
     uint256 internal constant CHUNK = 24000; // multiple of 5
 
     function run() external {
-        string memory chain = vm.envString("CHAIN");
-
         bytes memory sprites = vm.readFileBinary("../build/out/sprites.bin");
         bytes memory offsets = vm.readFileBinary("../build/out/spriteOffsets.bin");
         bytes memory tokens = vm.readFileBinary("../build/out/tokens.bin");
@@ -41,11 +39,10 @@ contract Deploy is Script {
         }
         store.seal();
 
-        DinoRenderer renderer = new DinoRenderer(store, chain);
+        DinoRenderer renderer = new DinoRenderer(store);
 
         vm.stopBroadcast();
 
-        console2.log("chain         :", chain);
         console2.log("chainId       :", block.chainid);
         console2.log("DinoStorage   :", address(store));
         console2.log("DinoRenderer  :", address(renderer));

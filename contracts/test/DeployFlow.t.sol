@@ -35,7 +35,7 @@ contract DeployFlowTest is Test {
             store.addTokenChunk(_slice(tokens, off, end));
         }
         store.seal();
-        renderer = new DinoRenderer(store, "eth");
+        renderer = new DinoRenderer(store);
     }
 
     function test_RepointBaseURI_resolvesToRenderer() public {

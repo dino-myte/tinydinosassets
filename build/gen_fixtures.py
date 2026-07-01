@@ -27,8 +27,9 @@ def _assert_no_escape(s):
     assert '"' not in s and "\\" not in s, f"unexpected JSON-special char in: {s!r}"
 
 
-def metadata_json(tok, chain):
-    """Exact compact JSON the Solidity renderer emits (no whitespace)."""
+def metadata_json(tok):
+    """Exact compact JSON the Solidity renderer emits (no whitespace). Chain-
+    independent: no current-chain; chain is only the static 'minted on' attr."""
     t = R.decode_token(tok)
     svg = R.build_svg(R.composite_grid(tok))
     image = "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
@@ -46,13 +47,12 @@ def metadata_json(tok, chain):
     parts.append(',"attributes":[')
     parts.append(",".join(
         '{"trait_type":"%s","value":"%s"}' % (tt, v) for tt, v in attrs))
-    parts.append('],"image":"%s"' % image)
-    parts.append(',"current-chain":"%s"}' % chain)
+    parts.append('],"image":"%s"}' % image)
     return "".join(parts)
 
 
-def token_uri(tok, chain):
-    j = metadata_json(tok, chain)
+def token_uri(tok):
+    j = metadata_json(tok)
     return "data:application/json;base64," + base64.b64encode(j.encode()).decode()
 
 
@@ -70,7 +70,7 @@ def main():
     ids, svgH, jsonH, uriH = [], [], [], []
     for tok in range(1, SUPPLY + 1):
         svg = R.build_svg(R.composite_grid(tok))
-        j = metadata_json(tok, "eth")
+        j = metadata_json(tok)
         u = "data:application/json;base64," + base64.b64encode(j.encode()).decode()
         ids.append(tok)
         svgH.append(kec(svg))
@@ -102,17 +102,11 @@ def main():
     for tok in sample_ids:
         s_ids.append(tok)
         s_svg.append(R.build_svg(R.composite_grid(tok)))
-        s_json.append(metadata_json(tok, "eth"))
-        s_uri.append(token_uri(tok, "eth"))
-    # current-chain coverage: token #1 on every chain
-    c_chains = list(CHAINS)
-    c_json = [metadata_json(1, c) for c in CHAINS]
+        s_json.append(metadata_json(tok))
+        s_uri.append(token_uri(tok))
 
     with open(os.path.join(OUT, "sample.json"), "w") as f:
-        json.dump({
-            "ids": s_ids, "svg": s_svg, "json": s_json, "uri": s_uri,
-            "chains": c_chains, "chainJson": c_json,
-        }, f, indent=2)
+        json.dump({"ids": s_ids, "svg": s_svg, "json": s_json, "uri": s_uri}, f, indent=2)
 
     # ---- trait fixtures: keccak of each sprite's 1024-byte RGBA (matches traitRGBA) ----
     from common import VIS, load_original, load_sprite, px_list
@@ -140,8 +134,8 @@ def main():
     with open(os.path.join(OUT, "traits.json"), "w") as f:
         json.dump({"gids": t_gids, "rgbaHash": t_hash, "names": t_name}, f)
 
-    print(f"wrote {OUT}/hashes_eth.json (10000 tokens) and sample.json "
-          f"({len(s_ids)} tokens + {len(c_chains)} chain checks)")
+    print(f"wrote {OUT}/hashes_eth.json ({SUPPLY} tokens), sample.json "
+          f"({len(s_ids)} tokens), traits.json ({len(t_gids)} sprites)")
 
 
 if __name__ == "__main__":

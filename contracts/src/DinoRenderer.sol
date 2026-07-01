@@ -19,10 +19,6 @@ import {Base64} from "./lib/Base64.sol";
 contract DinoRenderer {
     DinoStorage public immutable store;
 
-    /// @dev The chain this deployment represents, e.g. "eth" or "bnb". Emitted
-    /// as the metadata "current-chain" field (matches the original per-chain JSON).
-    string public currentChain;
-
     string internal constant DESC =
         "one of 10k cc0 tiny dinos minted out across 7 different chains";
 
@@ -39,9 +35,10 @@ contract DinoRenderer {
         uint256 one;
     }
 
-    constructor(DinoStorage _store, string memory _currentChain) {
+    /// @dev Chain-independent: the only chain shown in metadata is the static
+    /// "minted on" attribute (per-token), so one renderer serves all chains.
+    constructor(DinoStorage _store) {
         store = _store;
-        currentChain = _currentChain;
     }
 
     // ---------------------------------------------------------------- public
@@ -63,8 +60,7 @@ contract DinoRenderer {
             '","description":"', DESC,
             '","tokenId":', _utoa(tokenId),
             ',"attributes":[', _attributes(r),
-            '],"image":"', image,
-            '","current-chain":"', currentChain, '"}'
+            '],"image":"', image, '"}'
         );
     }
 

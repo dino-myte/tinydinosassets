@@ -30,7 +30,7 @@ contract DinoRendererTest is Test {
         }
         store.seal();
 
-        renderer = new DinoRenderer(store, "eth");
+        renderer = new DinoRenderer(store);
 
         assertEq(store.totalTokens(), 10001, "token count");
     }
@@ -86,19 +86,6 @@ contract DinoRendererTest is Test {
         bytes32[] memory h = vm.parseJsonBytes32Array(j, ".rgbaHash");
         for (uint256 i = 0; i < gids.length; i++) {
             assertEq(keccak256(renderer.traitRGBA(gids[i])), h[i], _msg("trait", gids[i]));
-        }
-    }
-
-    /// The metadata "current-chain" field must follow the deployment chain, while
-    /// everything else stays identical (token #1 rendered on all 7 chains).
-    function test_PerChain() public {
-        string memory j = vm.readFile("./test/fixtures/sample.json");
-        string[] memory chains = vm.parseJsonStringArray(j, ".chains");
-        string[] memory chainJson = vm.parseJsonStringArray(j, ".chainJson");
-
-        for (uint256 i = 0; i < chains.length; i++) {
-            DinoRenderer r = new DinoRenderer(store, chains[i]);
-            assertEq(r.metadataJSON(1), chainJson[i], chains[i]);
         }
     }
 

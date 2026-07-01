@@ -82,7 +82,7 @@ def main():
     store.functions.seal().transact(TX)
     assert store.functions.totalTokens().call() == 10000
 
-    renderer = deploy(rd_abi, rd_bin, (store.address, "eth"))
+    renderer = deploy(rd_abi, rd_bin, (store.address,))
 
     # ---- sample fixtures: full-string comparison ----
     sample = json.load(open(os.path.join(FIX, "sample.json")))
@@ -98,15 +98,6 @@ def main():
         if guri != sample["uri"][k]:
             fails += 1; print(f"  URI mismatch token {tok}")
     print(f"sample ({len(sample['ids'])} tokens): {'OK' if fails == 0 else f'{fails} FAILURES'}")
-
-    # ---- per-chain current-chain check ----
-    for chain, expected in zip(sample["chains"], sample["chainJson"]):
-        r = deploy(rd_abi, rd_bin, (store.address, chain))
-        got = r.functions.metadataJSON(1).call()
-        if got != expected:
-            fails += 1; print(f"  per-chain mismatch {chain}")
-    print(f"per-chain ({len(sample['chains'])} chains): "
-          f"{'OK' if fails == 0 else 'FAILURES'}")
 
     # ---- broad sweep: keccak over every Nth token vs hashes_eth.json ----
     H = json.load(open(os.path.join(FIX, "hashes_eth.json")))

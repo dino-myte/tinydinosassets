@@ -128,7 +128,9 @@ def rasterize_svg(svg):
     return grid
 
 
-def build_metadata(tok, current_chain):
+def build_metadata(tok):
+    """Chain-independent metadata, matching the LIVE collection: no current-chain
+    field; the only chain shown is the static 'minted on' attribute."""
     t = decode_token(tok)
     svg = build_svg(composite_grid(tok))
     image = "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
@@ -147,7 +149,6 @@ def build_metadata(tok, current_chain):
         "tokenId": tok,
         "attributes": attrs,
         "image": image,
-        "current-chain": current_chain,
     }
 
 
@@ -172,29 +173,28 @@ def main():
     if fails:
         print("  first failures:", fails[:20])
 
-    # ---- metadata verification across all 7 chains ----
+    # ---- metadata verification (chain-independent: name/description/tokenId/
+    # attributes incl. 'minted on'; no current-chain, matching the live collection) ----
     meta_fail = 0
     meta_examples = []
-    for chain in CHAINS:
-        for tok in range(1, SUPPLY + 1):
-            got = build_metadata(tok, chain)
-            src, _attrs = load_meta(tok, chain)
-            ok = (
-                got["name"] == src["name"]
-                and got["description"] == src["description"]
-                and got["tokenId"] == src["tokenId"]
-                and got["attributes"] == src["attributes"]
-                and got["current-chain"] == src["current-chain"]
-            )
-            if not ok:
-                meta_fail += 1
-                if len(meta_examples) < 10:
-                    meta_examples.append((chain, tok))
-        print(f"  metadata chain {chain}: checked {SUPPLY}")
+    for tok in range(1, SUPPLY + 1):
+        got = build_metadata(tok)
+        src, _attrs = load_meta(tok, "eth")  # attributes are identical across chains
+        ok = (
+            got["name"] == src["name"]
+            and got["description"] == src["description"]
+            and got["tokenId"] == src["tokenId"]
+            and got["attributes"] == src["attributes"]
+            and "current-chain" not in got
+        )
+        if not ok:
+            meta_fail += 1
+            if len(meta_examples) < 10:
+                meta_examples.append(tok)
 
-    total = len(CHAINS) * SUPPLY
+    total = SUPPLY
     print(f"\nMETADATA verification: {total - meta_fail}/{total} exact "
-          f"(name/description/tokenId/attributes/current-chain)")
+          f"(name/description/tokenId/attributes incl 'minted on'; no current-chain)")
     if meta_examples:
         print("  first metadata mismatches:", meta_examples)
 
