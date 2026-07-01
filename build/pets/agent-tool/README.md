@@ -173,3 +173,40 @@ calling Bankr (or allowlist the `/64` prefix if Bankr accepts CIDR). Bankr Club
   collection-level; would need a custom predicate or in-handler `ownerOf` check.
 - **Personalized `pet.json`** (owner address / custom name) templated in the handler.
 - **x402 tip** for non-holders (`x402Gate` + `x402UsdcPricing`) if you ever want revenue.
+
+## 7. How agents call the tool (LIVE — tool id 54)
+
+**Discover** it in OpenSea's registry:
+```
+GET  https://api.opensea.io/api/v2/tools/search?query=tiny+dino          # x-api-key header
+GET  https://api.opensea.io/api/v2/tools/1/0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1/54
+# or the MCP tools (search_tools / get_tool) or:  opensea tools search "tiny dino"
+```
+
+**Invoke** it. Gating uses the standard **402 + zero-value EIP-3009** flow (tool-sdk ≥ 0.26):
+the caller signs a *free* zero-value authorization proving wallet control, and the gate checks
+that wallet holds a tiny dino on Ethereum. Use `eip3009AuthenticatedFetch` — it handles the
+402 challenge, signs, and retries automatically:
+
+```ts
+import { eip3009AuthenticatedFetch } from "@opensea/tool-sdk";
+import { privateKeyToAccount } from "viem/accounts";
+
+const account = privateKeyToAccount(process.env.PRIVATE_KEY); // a dino-holding wallet
+// managed wallets work too:  const account = await createBankrAccount(process.env.BANKR_API_KEY);
+
+const res = await eip3009AuthenticatedFetch("https://dinomyte.xyz/api/pet", {
+  account,
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ tokenId: 2139 }),
+});
+// 200 -> { slug, spritesheetUrl, gameSpritesheetUrl, zipUrl, installCmd, ... }  (holder)
+// 403 -> "access predicate denied"  (signature valid, but wallet holds no dino)
+// 402 -> only if the caller doesn't sign (eip3009AuthenticatedFetch does this for you)
+```
+
+The returned `zipUrl` is a ready-to-install petdex pack (`pet.json` + `spritesheet.webp`);
+drop it in the pets dir (`~/.codex/pets/` or `~/.hermes/pets/`) — see the `installCmd` field.
+Note: **SIWE / `authenticatedFetch` was removed in 0.26** — callers must use the EIP-3009 path
+(which is also what makes usage reporting fire).
