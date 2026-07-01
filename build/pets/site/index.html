@@ -140,19 +140,26 @@
 
 <script>
 // CDN_BASE: where the pet assets live (laid out under /pets/<slug>/...).
-// Single-Worker prod (dinomyte.xyz serves /pets/* from R2 on the same origin):
-const CDN_BASE = "https://dinomyte.xyz";
-// For local dev against the dynamic generator (server.py), set CDN_BASE = "".
+// Single-Worker prod (dinomyte.xyz serves /pets/* from R2 on the same origin).
+// On localhost we use the dynamic generator (server.py) so renders always
+// reflect the current animator code.
+const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+const CDN_BASE = LOCAL ? "" : "https://dinomyte.xyz";
 const STATIC = CDN_BASE !== "";
 const $ = s => document.querySelector(s);
 function show(el,on){el.classList.toggle('hidden',!on)}
 
+// Asset version: bump when re-rendering ALL tokens (e.g. animation changes).
+// /pets/* is cached immutable at the edge + browser; the query busts both
+// (the Worker keys R2 by pathname, so no re-upload path changes needed).
+const ASSET_V = "?v=2";
 function urls(id){
   const slug = `tiny-dino-${id}`;
   if(STATIC){
     const b = `${CDN_BASE}/pets/${slug}`;
-    return {pet:`${b}/pet.json`, sheet:`${b}/spritesheet.webp`, game:`${b}/spritesheet_game.webp`,
-            atlas:`${b}/atlas.json`, preview:`${b}/preview.webp`, zip:`${b}/pet.zip`};
+    return {pet:`${b}/pet.json${ASSET_V}`, sheet:`${b}/spritesheet.webp${ASSET_V}`,
+            game:`${b}/spritesheet_game.webp${ASSET_V}`, atlas:`${b}/atlas.json${ASSET_V}`,
+            preview:`${b}/preview.webp${ASSET_V}`, zip:`${b}/pet.zip${ASSET_V}`};
   }
   const b = `/api/pet/${id}`;
   return {pet:`${b}/pet.json`, sheet:`${b}/spritesheet.webp`, game:`${b}/spritesheet_game.webp`,

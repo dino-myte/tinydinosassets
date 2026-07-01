@@ -96,6 +96,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        # dev server: renders track the animator code, so never let browsers cache
+        self.send_header("Cache-Control", "no-store")
         if fname:
             self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
         self.end_headers()

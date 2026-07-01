@@ -68,7 +68,7 @@ def main():
         lo, hi = args.range
         tokens = list(range(lo, hi + 1))
     else:
-        tokens = list(range(1, A.common.SUPPLY))
+        tokens = list(range(1, A.common.SUPPLY + 1))
     os.makedirs(args.out, exist_ok=True)
 
     # frontend + manifest
