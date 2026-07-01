@@ -1,5 +1,16 @@
 # tiny dinos — live ERC-721 contracts (the ones to repoint)
 
+> **Scope note:** this applies to the seasonal collections too. The seasonal
+> collections (e.g. `tiny dinos: summer 2022` at
+> `0x5a1190759c9e7cf42da401639016f8f60affd465` on Ethereum, 269 minted, sparse
+> ids 97–9963, same owner `0xde7f…d666`, same `tokenURI = baseURI + id` shape)
+> are **already-live original contracts, exactly like the OG collections**. The
+> plan for each is identical: deploy the (Seasonal)Renderer on the collection's
+> chain, then the owner repoints the existing contract via `setBaseURI`. The
+> Base seasonal deployments under `deployments/` are previews/mimics, not the
+> real collections. The seasonal storage encodes all 10,001 ids (a superset of
+> the sparse minted set), so the renderer serves every minted id correctly.
+
 The collection is a LayerZero omnichain ERC-721 (`tinydinos`, ticker `DINO`,
 Solidity v0.8.11, OpenZeppelin 4.4.1). A token exists on exactly one chain at a
 time; its metadata `current-chain` reflects where it currently is. Every contract
