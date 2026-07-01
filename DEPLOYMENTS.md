@@ -35,11 +35,24 @@ same-address deploy — identical bytecode/owner). Sources verified on Etherscan
 Current ETH `tokenURI(1)` (pre-switch):
 `ipfs://QmZPSjZKMjDUcqGuy6xS2EDQsJVFLyGHj3LUM2DkmCEfHo/1`
 
-## Open detail before deploy
+## Return handling — RESOLVED (2026-07-01, tested against the live Base deploys)
 
 `tokenURI(id) = baseURI + id` produces a clean `web3://…/metadataJSON/<id>` URL
-(good — no `.json` suffix to fight). The remaining thing to pin down is the exact
-EIP-4804 return handling so the resolved body is served as `application/json`
-(manual-mode `?returns` vs. an EIP-5219-style resource response). The renderer
-already returns the JSON string from `metadataJSON(id)`; this is a URL-format
-decision, not a data/rendering one.
+(good — no `.json` suffix to fight). The EIP-4804 return-handling question is
+settled: use the **plain path, no `?returns`**. Verified through the public
+w3link gateway against the live Base contracts:
+
+- plain `…/metadataJSON/<id>` → the gateway returns the **raw JSON string
+  bytes** directly (exactly the OpenSea-recommended form). `?returns=(string)`
+  is actively worse — it wraps the body as an ABI-decoded JSON array
+  (`["{\"name\":…"]`).
+- worst-case gas fits with ample headroom: genesis #8891 = 3.96M gas
+  (`metadataJSON`, measured via `cast estimate` on Base); summer #4271 = 7.63M.
+  Both resolve HTTP 200 in ~0.8s through w3link, JSON parses, embedded SVG
+  decodes.
+- the gateway serves an empty `content-type` header rather than
+  `application/json`, but the live summer collection already indexes and
+  renders on OpenSea through this exact URL form, so this is empirically fine.
+
+So the baseURI format at the top of this file is final — no URL change needed
+before the 7-chain repoint.
