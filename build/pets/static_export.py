@@ -57,12 +57,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=OUT_DEFAULT)
     ap.add_argument("--range", nargs=2, type=int, metavar=("LO", "HI"))
+    ap.add_argument("--tokens", help="comma-separated token ids (overrides --range)")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
     ap.add_argument("--no-game", action="store_true")
     args = ap.parse_args()
 
-    lo, hi = args.range if args.range else (1, A.common.SUPPLY)
-    tokens = list(range(lo, hi + 1))
+    if args.tokens:
+        tokens = [int(t) for t in args.tokens.split(",") if t.strip()]
+    elif args.range:
+        lo, hi = args.range
+        tokens = list(range(lo, hi + 1))
+    else:
+        tokens = list(range(1, A.common.SUPPLY))
     os.makedirs(args.out, exist_ok=True)
 
     # frontend + manifest

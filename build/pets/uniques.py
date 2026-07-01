@@ -35,7 +35,7 @@ UNIQUES = {
     10001: ("bug", "glitch"),
 }
 FLOODFILL = {701, 2918}   # remove the baked background
-KEEP_GOLD = {7710}        # mfer keeps its iconic gold
+KEEP_GOLD = set()         # (mfer's gold removed per feedback — floats like the others)
 
 
 # ---- background handling -----------------------------------------------------
@@ -214,8 +214,7 @@ def frames_for(state, layers):
         fr = A._render(prep, shadow=_shadow(sig), **_params(sig, state, i, n))
         # signature effect
         if sig == "smoke":
-            fr = gold_badge(fr)              # mfer: gold medallion (floats) + smoke
-            fr = smoke(fr, i, n)
+            fr = smoke(fr, i, n)             # mfer: bg stripped, floats + cigarette smoke
         elif sig == "glitch":
             fr = glitch(fr, i, n)
         elif sig == "float":
