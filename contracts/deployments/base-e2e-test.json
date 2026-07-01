@@ -1,0 +1,19 @@
+{
+  "_comment": "End-to-end TEST collection on Base (chainId 8453) for the ETH mainnet genesis renderer: a TestTinyDinos (ERC721A mimic, name 'tiny dinos') with all 10,001 minted and baseURI set to the EXACT string the real collection owner will set on eth — web3:// URLs carry the chainId, so this Base collection's metadata resolves from the Ethereum mainnet renderer. What indexers show here is exactly what eth will show after the repoint. Deployed via TestNFTDeployer helper through the CREATE2 proxy (Bankr wallet cannot send creation txs); the helper owns the NFT and forwards owner calls from the operator via exec().",
+  "chain": "base",
+  "chainId": 8453,
+  "deployedAt": "2026-07-01",
+  "deployer": "0x688db40f817541abec62dc9035946d2397a79657",
+  "create2Salt": "keccak256('tinydinos-eth-e2e-test')",
+  "contracts": {
+    "TestNFTDeployer": "0x6CE981949EC67Caf22095CBB07B1a38F75668729",
+    "TestTinyDinos": "0x0c26340470e220239Ba1FCD0b8C5B056163BcDE3"
+  },
+  "pointsAt": {
+    "DinoRenderer": "0xB375319914A50Ba59D6f18102f6789B3C0AE9c55",
+    "rendererChainId": 1
+  },
+  "baseURI": "web3://0xb375319914a50ba59d6f18102f6789b3c0ae9c55:1/metadataJSON/",
+  "totalSupply": 10001,
+  "verified": "tokenURI(id) = exact mainnet baseURI + id; worst-case #8891 resolves via w3link (HTTP 200, ~0.6s) to valid JSON with 10 attributes and a 9,181-byte inline SVG read from ETH mainnet"
+}
